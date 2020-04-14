@@ -1,2 +1,2 @@
-# spark-sample-project
-Sample spark project with tests
+# Sample Spark project with a test
+Code test a spark code
