@@ -63,7 +63,6 @@ class SampleSparkKakfaTest extends QueryTest with SharedSQLContext with Embedded
           .option("endingOffsets", "latest")
           .option("subscribe", topic)
           .load()
-expected.printSchema()
         val jsonDataset = expected.select(col("value").cast("string"))
           .as[String]
         jsonDataset.show(false)
@@ -73,8 +72,6 @@ expected.printSchema()
             col("ts_ms"),
             col("record.*"))
 
-        frame.printSchema()
-        frame.show(false)
         // what if we have column clash. better prefix with some constant for names of internal fixed column
         // what if we have two different schemas in same batch. It should merge it. Non participating columns will become null.
         frame.write.partitionBy("tableName", "date").option("header", "true").csv("./raw/stream")
