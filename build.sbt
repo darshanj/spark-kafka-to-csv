@@ -9,6 +9,8 @@ val spark_test = (name: String) => sparkModuleId(name) % Test classifier "tests"
 lazy val excludeJpountz = ExclusionRule(organization = "net.jpountz.lz4", name = "lz4")
 lazy val excludeJackson = ExclusionRule(organization = "com.fasterxml.jackson.core", name = "jackson-databind")
 
+val kafkaVersion = "2.1.1"
+
 libraryDependencies ++= Seq(
   spark_test("core"),
   spark_test("sql"),
@@ -19,7 +21,6 @@ libraryDependencies ++= Seq(
   spark("sql"),
   spark("catalyst"),
   "org.lz4" % "lz4-java" % "1.4.0" % Test, // This is required so that spark uses its version of instead kafka's
-  "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.1" % Test excludeAll(excludeJackson),
-  "org.apache.kafka" %% "kafka" % "2.1.1" % Test excludeAll(excludeJackson),
-
+  "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion % Test excludeAll excludeJackson,
+  "org.apache.kafka" %% "kafka" % kafkaVersion % Test excludeAll excludeJackson,
 )
