@@ -28,7 +28,8 @@ object SaveCDCMessages {
     schemaRegistry
       .foreachParallely {
         case (tableName, schema) =>
-          val jsonData = valuesWithMetaData.filterByTableName(tableName).value.toFlattenJsonDF()
+          val jsonData = valuesWithMetaData.filterByTableName(tableName).value.toFlattenJsonDF
+
           jsonData
             .withDateColumn()
             .dropExtraColumns()

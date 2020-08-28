@@ -56,6 +56,7 @@ class SampleSparkKakfaTest extends QueryTest with SharedSQLContext with Embedded
             SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKakfaReader(testdata))
 
             val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
+
             val expectedt1DF = Seq(
               ("record3", 3, "sds3", "c", "ts1", Date.valueOf("2016-12-02")),
               ("record1", 1, "sds", "c", "ts1", Date.valueOf("2016-12-01")))

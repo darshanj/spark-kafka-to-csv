@@ -12,11 +12,9 @@ import org.apache.spark.sql.test.SharedSQLContext
 import streaming._
 
 case class CDCMsg(tableName: String, record: String)
-
-class SampleSparkTest extends QueryTest with SharedSQLContext {
+class SampleSparkTest extends QueryTest with SharedSQLContext with DataFrameMatchers {
 
   import testImplicits._
-
   test("should save cdc message to csvs") {
     Seq(1).toDF() // Initiate a session
     withDefaultTimeZone(TimeZoneUTC) {
