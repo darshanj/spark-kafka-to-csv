@@ -2,7 +2,6 @@ package streaming
 
 import java.sql.{Date, Timestamp}
 
-import com.sample.DataFrameMatchers
 import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.functions.col

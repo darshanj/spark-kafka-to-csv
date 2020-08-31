@@ -1,9 +1,8 @@
-package com.sample
+package streaming
 
 import java.nio.file.Paths
 import java.sql.Date
 
-import kafka.server.KafkaConfig
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.log4j.lf5.LogLevel
 import org.apache.spark.sql.QueryTest
@@ -11,9 +10,8 @@ import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSQLContext
-import streaming._
 
-class SampleSparkKakfaTest extends QueryTest with SharedSQLContext with EmbeddedKafka {
+class SaveCDCMessagesITTest extends QueryTest with SharedSQLContext with EmbeddedKafka {
 
   import testImplicits._
 
@@ -21,7 +19,7 @@ class SampleSparkKakfaTest extends QueryTest with SharedSQLContext with Embedded
   private val brokerAddress = s"127.0.0.1:$brokerPort"
 
   implicit val config = EmbeddedKafkaConfig(kafkaPort = brokerPort, customBrokerProperties =
-    Map(KafkaConfig.AutoCreateTopicsEnableProp -> "false"))
+    Map(kafka.server.KafkaConfig.AutoCreateTopicsEnableProp -> "false"))
 
   override def beforeAll(): Unit = {
     super.beforeAll()

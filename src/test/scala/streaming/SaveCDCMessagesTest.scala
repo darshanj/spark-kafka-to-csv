@@ -1,4 +1,4 @@
-package com.sample
+package streaming
 
 import java.nio.file.Paths
 import java.sql.Date
@@ -9,10 +9,9 @@ import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSQLContext
-import streaming._
 
 case class CDCMsg(tableName: String, record: String)
-class SampleSparkTest extends QueryTest with SharedSQLContext with DataFrameMatchers {
+class SaveCDCMessagesTest extends QueryTest with SharedSQLContext with DataFrameMatchers {
 
   import testImplicits._
   test("should save cdc message to csvs") {

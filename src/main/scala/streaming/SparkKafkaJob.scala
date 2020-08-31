@@ -1,8 +1,8 @@
-package com.sample
+package streaming
 
 import org.apache.spark.sql.SparkSession
 
-object SparkKakfaJob {
+object SparkKafkaJob {
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder()
       .appName("SparkKakfaJob")

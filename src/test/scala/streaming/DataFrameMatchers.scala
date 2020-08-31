@@ -1,9 +1,8 @@
-package com.sample
+package streaming
 
 import org.apache.spark.sql.QueryTest
 import org.scalatest.Matchers
-import org.scalatest.matchers._
-import streaming.DataFrameLike
+import org.scalatest.matchers.{MatchResult, Matcher}
 
 trait DataFrameMatchers extends Matchers {
   self: QueryTest =>

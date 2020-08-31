@@ -9,6 +9,8 @@ val spark_test = (name: String) => sparkModuleId(name) % Test classifier "tests"
 lazy val excludeJpountz = ExclusionRule(organization = "net.jpountz.lz4", name = "lz4")
 lazy val excludeJackson = ExclusionRule(organization = "com.fasterxml.jackson.core", name = "jackson-databind")
 
+Test / fork := true
+
 val kafkaVersion = "2.1.1"
 
 libraryDependencies ++= Seq(
