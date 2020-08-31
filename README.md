@@ -1,5 +1,5 @@
-# Sample Spark project with a test
-Code test a spark code
+# Sample Spark project which copies kafka message to csvs with a test
+1. Run tests: ```sbt -java-home $(/usr/libexec/java_home -v 1.8) test```
 
 #Sample kafka with spark streaming test
 
