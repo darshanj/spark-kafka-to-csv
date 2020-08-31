@@ -4,8 +4,8 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{col, to_date}
 import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.MILLIS_PER_SECOND
-
 sealed trait JsonDataFrame extends DataFrameLike {
+  def renameTableNameColumn(): JsonDataFrame
   def withDateColumn(): JsonDataFrame
 
   def dropExtraColumns(): JsonDataFrame
@@ -23,20 +23,32 @@ object JsonDataFrame {
   }
 
   private case class JsonFlatDataFrame (protected val dataFrame: DataFrame) extends JsonDataFrame {
+    private val tableNamePartitionColumnName = "tableName"
+
+    private val datePartitionColumnName = "date"
+
     override def withDateColumn(): JsonDataFrame = {
-      JsonFlatDataFrame(dataFrame.withColumn("date",
-        to_date((col("source_ts") / MILLIS_PER_SECOND).cast(TimestampType)).as("date")))
+      JsonFlatDataFrame(dataFrame.withColumn(datePartitionColumnName,
+        to_date((col("__source_ts_ms") / MILLIS_PER_SECOND).cast(TimestampType))))
     }
 
-    override def dropExtraColumns(): JsonDataFrame = new JsonFlatDataFrame(dataFrame.drop("source_ts","topic"))
+    override def dropExtraColumns(): JsonDataFrame = {
+      val colsToDrop = Seq("__name","__lsn","__txId","__source_ts_ms","__source_schema","__ts_ms","__deleted")
+      JsonFlatDataFrame(dataFrame.drop(colsToDrop: _*))
+    }
 
     override def writeTo(outputDir: String): Unit = {
-      dataFrame.write.partitionBy("tableName", "date").option("header", "true").csv(outputDir)
+      dataFrame.write.partitionBy(tableNamePartitionColumnName, datePartitionColumnName).option("header", "true").csv(outputDir)
     }
 
     override def checkIfMandatoryColumnsArePresent: JsonDataFrame = {
       // TODO: validate and return a FaultyJsonFlatDataFrame with a FaultyFileWriter instead of SuccessWriter
       JsonFlatDataFrame(dataFrame)
+    }
+
+    override def renameTableNameColumn(): JsonDataFrame = {
+      val tableColumnNameFromMessage = "__table"
+      JsonFlatDataFrame(dataFrame.withColumnRenamed(tableColumnNameFromMessage, tableNamePartitionColumnName))
     }
   }
 
@@ -48,6 +60,8 @@ object JsonDataFrame {
     override protected def dataFrame: DataFrame = SparkSession.getActiveSession.get.emptyDataFrame
 
     override def checkIfMandatoryColumnsArePresent: JsonDataFrame = EmptyJsonFlatDataFrame()
+
+    override def renameTableNameColumn(): JsonDataFrame = this
   }
 }
 

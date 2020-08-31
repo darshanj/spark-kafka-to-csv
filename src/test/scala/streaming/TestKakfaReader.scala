@@ -14,10 +14,11 @@ object TestData {
   val ts1 = timestamp.toEpochMilli
   val ts2 = timestamp.plus(Duration.ofDays(1)).toEpochMilli
   val topic = "testTopic"
+
   val inputDF = Seq(
-    (topic, raw"""{"topic":"$topic","op":"c","tableName":"t1","a":"record1", "b":1 , "d": "sds" , "source_ts":$ts1, "ts_ms":"ts1" }"""),
-    (topic, raw"""{"topic":"$topic","op":"c","tableName":"t1","a":"record3", "b":3 , "d": "sds3" , "source_ts":$ts2, "ts_ms":"ts1" }"""),
-    (topic, raw"""{"topic":"$topic","op":"c","tableName":"t2","a":"record2", "b":2, "c" : 3.4 , "source_ts":$ts2, "ts_ms":"ts2" }""")
+    (topic, raw"""{"a":"record1", "b":1 , "d": "sds" ,"__op":"c","__name":"name","__table":"t1","__lsn":0,"__txId":0,"__source_ts_ms":$ts1,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
+    (topic, raw"""{"a":"record3", "b":3 , "d": "sds3" ,"__op":"c","__name":"name","__table":"t1","__lsn":0,"__txId":0,"__source_ts_ms":$ts2,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
+    (topic, raw"""{"a":"record2", "b":2, "c" : 3.4  ,"__op":"c","__name":"name","__table":"t2","__lsn":0,"__txId":0,"__source_ts_ms":$ts2,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""")
   ).toDF("topic", "value")
 
 }

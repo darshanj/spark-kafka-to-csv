@@ -5,7 +5,7 @@ import org.apache.spark.sql.functions.{col, get_json_object}
 
 case class KakfaDataFrame( protected val dataFrame: DataFrame) extends DataFrameLike {
   def value : KakfaDataFrame = select("value")
-  def filterByTableName(name: String): KakfaDataFrame = KakfaDataFrame(dataFrame.where(col("tableName") === name))
+  def filterByTableName(name: String): KakfaDataFrame = KakfaDataFrame(dataFrame.where(col("__table") === name))
   def withColumnFromValue(columnName: String): KakfaDataFrame = {
     KakfaDataFrame(dataFrame.withColumn(columnName, get_json_object(col("value"), "$." + columnName)))
   }

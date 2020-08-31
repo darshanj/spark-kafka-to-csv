@@ -23,8 +23,8 @@ object SaveCDCMessages {
     val valuesWithMetaData = reader
       .read(config.topic, offsets)
       .value
-      .withColumnFromValue("tableName")
-      .withColumnFromValue("op")
+      .withColumnFromValue("__table")
+      .withColumnFromValue("__op")
     schemaRegistry
       .foreachParallely {
         case (tableName, schema) =>
@@ -33,6 +33,7 @@ object SaveCDCMessages {
           jsonData
             .withDateColumn()
             .dropExtraColumns()
+            .renameTableNameColumn()
             .writeTo(config.outputDirectory)
       }
   }

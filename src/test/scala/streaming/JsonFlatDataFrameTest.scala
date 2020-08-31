@@ -9,20 +9,23 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.sql.types.{DateType, TimestampType}
 
+
 class JsonFlatDataFrameTest extends QueryTest with SharedSQLContext with DataFrameMatchers {
   import testImplicits._
 
-  test("should return an empty JSON data frame for an input empty Data Frame") {
-    //    println(JsonDataFrame.of(emptyTestData) isInstanceOf EmptyJsonFlatDataFrame)
+  test("should rename Tablename") {
+    val inputDF = JsonDataFrame.of(Seq((2, "t1")).toDF("a", "__table"))
+    val expectedDF = JsonDataFrame.of(Seq((2,"t1")).toDF("a","tableName"))
+    inputDF.renameTableNameColumn() should beSameAs(expectedDF)
   }
 
   private val EPOCH_START_MILLIS = 0L
   test("should return a JSON data frame with Date Column") {
     withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
-      val inputDF = JsonDataFrame.of(Seq(EPOCH_START_MILLIS).toDF("source_ts"))
+      val inputDF = JsonDataFrame.of(Seq(EPOCH_START_MILLIS).toDF("__source_ts_ms"))
       val expectedDF = JsonDataFrame.of(
         Seq((EPOCH_START_MILLIS, Date.valueOf("1970-01-01")))
-          .toDF("source_ts", "date"))
+          .toDF("__source_ts_ms", "date"))
 
       inputDF.withDateColumn() should beSameAs(expectedDF)
     }
@@ -34,8 +37,8 @@ class JsonFlatDataFrameTest extends QueryTest with SharedSQLContext with DataFra
 
   test ("should drop extra columns") {
     val inputDF = JsonDataFrame.of(
-      Seq((2, EPOCH_START_MILLIS, "topic_name"))
-      .toDF("a", "source_ts", "topic"))
+      Seq((2, "name",0,0,EPOCH_START_MILLIS,"ss",0, "true"))
+      .toDF("a", "__name","__lsn","__txId","__source_ts_ms","__source_schema","__ts_ms","__deleted"))
     val expectedDF = JsonDataFrame.of(Seq(2).toDF("a"))
     inputDF.dropExtraColumns() should beSameAs(expectedDF)
   }
