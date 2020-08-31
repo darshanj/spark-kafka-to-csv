@@ -10,6 +10,7 @@ lazy val excludeJpountz = ExclusionRule(organization = "net.jpountz.lz4", name =
 lazy val excludeJackson = ExclusionRule(organization = "com.fasterxml.jackson.core", name = "jackson-databind")
 
 Test / fork := true
+val akkaVersion = "2.5.21"
 
 val kafkaVersion = "2.1.1"
 
@@ -25,4 +26,7 @@ libraryDependencies ++= Seq(
   "org.lz4" % "lz4-java" % "1.4.0" % Test, // This is required so that spark uses its version of instead kafka's
   "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion % Test excludeAll excludeJackson,
   "org.apache.kafka" %% "kafka" % kafkaVersion % Test excludeAll excludeJackson,
+
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion % Test,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test
 )
