@@ -25,6 +25,7 @@ object SaveCDCMessages {
       .value
       .withColumnFromValue("__table")
       .withColumnFromValue("__op")
+
     schemaRegistry
       .foreachParallely {
         case (tableName, schema) =>

@@ -1,6 +1,6 @@
 package streaming
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{col, to_date}
 import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.MILLIS_PER_SECOND
@@ -38,8 +38,8 @@ object JsonDataFrame {
     }
 
     override def writeTo(outputDir: String): Unit = {
-      dataFrame.printSchema()
-      dataFrame.write.partitionBy(tableNamePartitionColumnName, datePartitionColumnName).option("header", "true").csv(outputDir)
+      dataFrame.write.partitionBy(tableNamePartitionColumnName, datePartitionColumnName).option("header", "true")
+        .mode(SaveMode.Append).csv(outputDir)
     }
 
     override def checkIfMandatoryColumnsArePresent: JsonDataFrame = {

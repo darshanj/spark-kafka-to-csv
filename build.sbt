@@ -10,8 +10,6 @@ lazy val excludeJpountz = ExclusionRule(organization = "net.jpountz.lz4", name =
 lazy val excludeJackson = ExclusionRule(organization = "com.fasterxml.jackson.core", name = "jackson-databind")
 
 Test / fork := true
-val akkaVersion = "2.5.21"
-
 val kafkaVersion = "2.1.1"
 
 libraryDependencies ++= Seq(
