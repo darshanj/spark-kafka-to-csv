@@ -3,14 +3,34 @@ package streaming
 import java.nio.file.Paths
 import java.sql.Date
 
-import net.manub.embeddedkafka.EmbeddedKafka
+import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
+import org.apache.log4j.lf5.LogLevel
 import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.streaming.StreamTest
+import org.apache.spark.sql.test.SharedSparkSession
 
-class SaveCDCMessagesITTest extends KafkaBaseTest {
+class SaveCDCMessagesITTest extends StreamTest with SharedSparkSession {
+  private val brokerPort = 9092
+  protected val brokerAddress = s"127.0.0.1:$brokerPort"
 
   import testImplicits._
+
+  implicit val embeddedKafkaConfig = EmbeddedKafkaConfig(kafkaPort = brokerPort, customBrokerProperties =
+    Map(kafka.server.KafkaConfig.AutoCreateTopicsEnableProp -> "false"))
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    spark.sparkContext.setLogLevel(LogLevel.ERROR.toString)
+    EmbeddedKafka.start()
+  }
+
+  override def afterAll(): Unit = {
+    EmbeddedKafka.stop()
+    super.afterAll()
+  }
+
   test("should read earliest to latest offset from kafka from one table when data is present") {
     Seq(1).toDF() // Initiate a session
     withDefaultTimeZone(TimeZoneUTC) {
@@ -52,4 +72,5 @@ class SaveCDCMessagesITTest extends KafkaBaseTest {
       }
     }
   }
+
 }

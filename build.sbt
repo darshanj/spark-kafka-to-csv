@@ -27,6 +27,4 @@ libraryDependencies ++= Seq(
   "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion % Test excludeAll excludeJackson,
   "org.apache.kafka" %% "kafka" % kafkaVersion % Test excludeAll excludeJackson,
 
-  "com.typesafe.akka" %% "akka-actor" % akkaVersion % Test,
-  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test
 )
