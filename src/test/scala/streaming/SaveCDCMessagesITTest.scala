@@ -8,10 +8,8 @@ import org.apache.log4j.lf5.LogLevel
 import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.streaming.StreamTest
-import org.apache.spark.sql.test.SharedSparkSession
 
-class SaveCDCMessagesITTest extends StreamTest with SharedSparkSession {
+class SaveCDCMessagesITTest extends SparkStreamTestBase {
   private val brokerPort = 9092
   protected val brokerAddress = s"127.0.0.1:$brokerPort"
 
@@ -32,13 +30,11 @@ class SaveCDCMessagesITTest extends StreamTest with SharedSparkSession {
   }
 
   test("should read earliest to latest offset from kafka from one table when data is present") {
-    Seq(1).toDF() // Initiate a session
     withDefaultTimeZone(TimeZoneUTC) {
       withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
 
-        val topic = TestData.topic
         EmbeddedKafka.createCustomTopic(topic, partitions = 2)
-        val testdata = TestData.inputDF
+        val testdata = inputDF
         testdata.write
           .format("kafka")
           .option("kafka.bootstrap.servers", brokerAddress)
@@ -50,7 +46,7 @@ class SaveCDCMessagesITTest extends StreamTest with SharedSparkSession {
             val outputDir = Paths.get(d.getAbsolutePath, "/raw/stream").toAbsolutePath.toString
 
             val config = new CDCConfig(Seq(brokerAddress, "testtopic", outputDir))
-            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKakfaReader(testdata))
+            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKafkaReader(testdata))
 
             val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
             val expectedt1DF = Seq(

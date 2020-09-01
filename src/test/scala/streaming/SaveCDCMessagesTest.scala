@@ -10,22 +10,19 @@ import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSQLContext
 
-case class CDCMsg(tableName: String, record: String)
-
-class SaveCDCMessagesTest extends QueryTest with SharedSQLContext with DataFrameMatchers {
+class SaveCDCMessagesTest extends SparkStreamTestBase with DataFrameMatchers {
 
   import testImplicits._
 
   test("should save cdc message to csvs") {
-    Seq(1).toDF() // Initiate a session
     withDefaultTimeZone(TimeZoneUTC) {
       withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
 
         withTempDir {
           d =>
             val outputDir = Paths.get(d.getAbsolutePath, "/raw/stream").toAbsolutePath.toString
-            val config = new CDCConfig(Seq("brokerAddress", TestData.topic, outputDir))
-            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKakfaReader(TestData.inputDF))
+            val config = new CDCConfig(Seq("brokerAddress", topic, outputDir))
+            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKafkaReader(inputDF))
 
             val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
             val expectedt1DF = Seq(
