@@ -1,10 +1,11 @@
 package streaming
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{col, get_json_object}
+import org.apache.spark.sql.types.StringType
 
 case class KakfaDataFrame( protected val dataFrame: DataFrame) extends DataFrameLike {
-  def value : KakfaDataFrame = select("value")
+  def value : KakfaDataFrame = select(col("value").cast(StringType))
   def filterByTableName(name: String): KakfaDataFrame = KakfaDataFrame(dataFrame.where(col("__table") === name))
   def withColumnFromValue(columnName: String): KakfaDataFrame = {
     KakfaDataFrame(dataFrame.withColumn(columnName, get_json_object(col("value"), "$." + columnName)))
@@ -16,5 +17,5 @@ case class KakfaDataFrame( protected val dataFrame: DataFrame) extends DataFrame
     JsonDataFrame.of(spark.read.json(dataFrame.as[String]))
   }
 
-  private def select(columnName: String): KakfaDataFrame = KakfaDataFrame(dataFrame.select(columnName))
+  private def select(column: Column): KakfaDataFrame = KakfaDataFrame(dataFrame.select(column))
 }

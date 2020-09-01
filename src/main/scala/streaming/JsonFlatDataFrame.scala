@@ -38,6 +38,7 @@ object JsonDataFrame {
     }
 
     override def writeTo(outputDir: String): Unit = {
+      dataFrame.printSchema()
       dataFrame.write.partitionBy(tableNamePartitionColumnName, datePartitionColumnName).option("header", "true").csv(outputDir)
     }
 
@@ -70,5 +71,6 @@ trait DataFrameLike {
   def check[U](right:DataFrameLike)(f:(DataFrame,DataFrame) => U): U = {
     f(this.dataFrame,right.dataFrame)
   }
+  def show() = dataFrame.show(false)
 }
 

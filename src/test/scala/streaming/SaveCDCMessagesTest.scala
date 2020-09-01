@@ -17,12 +17,12 @@ class SaveCDCMessagesTest extends SparkStreamTestBase with DataFrameMatchers {
   test("should save cdc message to csvs") {
     withDefaultTimeZone(TimeZoneUTC) {
       withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
-
+        val topic = newTopic()
         withTempDir {
           d =>
-            val outputDir = Paths.get(d.getAbsolutePath, "/raw/stream").toAbsolutePath.toString
+            val outputDir = Paths.get(d.getAbsolutePath, "/raw/stream/SaveCDCMessagesTest").toAbsolutePath.toString
             val config = new CDCConfig(Seq("brokerAddress", topic, outputDir))
-            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKafkaReader(inputDF))
+            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKafkaReader(testDataFor(topic)))
 
             val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
             val expectedt1DF = Seq(

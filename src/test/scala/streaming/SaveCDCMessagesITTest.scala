@@ -9,7 +9,7 @@ import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.internal.SQLConf
 
-class SaveCDCMessagesITTest extends SparkStreamTestBase {
+class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
   private val brokerPort = 9092
   protected val brokerAddress = s"127.0.0.1:$brokerPort"
 
@@ -30,11 +30,26 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase {
   }
 
   test("should read earliest to latest offset from kafka from one table when data is present") {
+    val topic = newTopic()
+        EmbeddedKafka.createCustomTopic(topic, partitions = 2)
+    val input = testDataFor(topic)
+    input.write
+          .format("kafka")
+          .option("kafka.bootstrap.servers", brokerAddress)
+          .option("topic", topic)
+          .save()
+        val config = new CDCConfig(Seq(brokerAddress, topic, "outputDir"))
+        val actual = KafkaReader(config.kafkaConfig).read(topic)
+    actual.value should beSameAs(KakfaDataFrame(input.select("value")))
+
+  }
+
+  test("should read and validate our output csvs") {
     withDefaultTimeZone(TimeZoneUTC) {
       withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
-
+        val topic = newTopic()
         EmbeddedKafka.createCustomTopic(topic, partitions = 2)
-        val testdata = inputDF
+        val testdata = testDataFor(topic)
         testdata.write
           .format("kafka")
           .option("kafka.bootstrap.servers", brokerAddress)
@@ -43,10 +58,10 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase {
 
         withTempDir {
           d => {
-            val outputDir = Paths.get(d.getAbsolutePath, "/raw/stream").toAbsolutePath.toString
+            val outputDir = Paths.get(d.getAbsolutePath, "/raw/stream/SaveCDCMessagesITTest").toAbsolutePath.toString
 
-            val config = new CDCConfig(Seq(brokerAddress, "testtopic", outputDir))
-            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), new TestKafkaReader(testdata))
+            val config = new CDCConfig(Seq(brokerAddress, topic, outputDir))
+            SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), KafkaReader(config.kafkaConfig))
 
             val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
             val expectedt1DF = Seq(

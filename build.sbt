@@ -26,5 +26,4 @@ libraryDependencies ++= Seq(
   "org.lz4" % "lz4-java" % "1.4.0" % Test, // This is required so that spark uses its version of instead kafka's
   "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion % Test excludeAll excludeJackson,
   "org.apache.kafka" %% "kafka" % kafkaVersion % Test excludeAll excludeJackson,
-
 )
