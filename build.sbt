@@ -1,4 +1,4 @@
-name := "spark-sample-project"
+name := "spark-kafka-to-csv"
 version := "0.1"
 scalaVersion := "2.11.12"
 
