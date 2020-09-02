@@ -119,7 +119,7 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
           .save()
         val config = new CDCConfig(Seq(brokerAddress, topic, "outputDir"))
         val actual = KafkaReader(config.kafkaConfig).read(topic)
-    actual.value should beSameAs(KakfaDataFrame(input.select("value")))
+    actual.value should beSameAs(KafkaDataFrame(input.select("value")))
 
   }
 
