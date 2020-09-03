@@ -1,25 +1,29 @@
 package streaming
 
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.{col, to_date}
-import org.apache.spark.sql.types.TimestampType
+import java.nio.file.Paths
+
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.MILLIS_PER_SECOND
+import org.apache.spark.sql.functions.{col, to_date}
+import org.apache.spark.sql.streaming.{OutputMode, Trigger}
+import org.apache.spark.sql.types.TimestampType
+
 sealed trait JsonDataFrame extends DataFrameLike {
-  def renameTableNameColumn(): JsonDataFrame
+
   def withDateColumn(): JsonDataFrame
 
   def dropExtraColumns(): JsonDataFrame
 
-  def writeTo(outputDir: String): Unit
-  def checkIfMandatoryColumnsArePresent:JsonDataFrame
+  def checkIfMandatoryColumnsArePresent: JsonDataFrame
+
+  def writeTo(tableName: String, config: Config): Unit
 }
 
 object JsonDataFrame {
   def of(dataFrame: DataFrame): JsonDataFrame = {
     // TODO: call checkIfMandatoryColumnsArePresent and create appropriate class: JsonFlatDataFrame
     // or FaultyJsonDataFrame with appropriate writer
-
-    if(!dataFrame.schema.fields.isEmpty) JsonFlatDataFrame(dataFrame) else EmptyJsonFlatDataFrame()
+    JsonFlatDataFrame(dataFrame)
   }
 
   private case class JsonFlatDataFrame (protected val dataFrame: DataFrame) extends JsonDataFrame {
@@ -33,13 +37,20 @@ object JsonDataFrame {
     }
 
     override def dropExtraColumns(): JsonDataFrame = {
-      val colsToDrop = Seq("__name","__lsn","__txId","__source_ts_ms","__source_schema","__ts_ms","__deleted")
+      val colsToDrop = Seq("__name","__lsn","__txId","__source_ts_ms","__source_schema","__ts_ms","__deleted","__table")
       JsonFlatDataFrame(dataFrame.drop(colsToDrop: _*))
     }
 
-    override def writeTo(outputDir: String): Unit = {
-      dataFrame.write.partitionBy(tableNamePartitionColumnName, datePartitionColumnName).option("header", "true")
-        .mode(SaveMode.Append).csv(outputDir)
+    override def writeTo(tableName: String, config: Config): Unit = {
+      val q = dataFrame.writeStream
+        .trigger(Trigger.Once())
+        .partitionBy(datePartitionColumnName)
+        .option("checkpointLocation", Paths.get(config.checkPointDirectory, "/",tableName).toString)
+        .option("path", Paths.get(config.outputDirectory + s"/$tableNamePartitionColumnName=$tableName").toString)
+        .option("header", "true")
+        .outputMode(OutputMode.Append)
+        .format("csv")
+        .start()
     }
 
     override def checkIfMandatoryColumnsArePresent: JsonDataFrame = {
@@ -47,22 +58,6 @@ object JsonDataFrame {
       JsonFlatDataFrame(dataFrame)
     }
 
-    override def renameTableNameColumn(): JsonDataFrame = {
-      val tableColumnNameFromMessage = "__table"
-      JsonFlatDataFrame(dataFrame.withColumnRenamed(tableColumnNameFromMessage, tableNamePartitionColumnName))
-    }
-  }
-
-  private case class EmptyJsonFlatDataFrame() extends JsonDataFrame {
-    override def withDateColumn(): JsonDataFrame = this
-    override def dropExtraColumns(): JsonDataFrame = this
-    override def writeTo(outputDir: String): Unit = {}
-
-    override protected def dataFrame: DataFrame = SparkSession.getActiveSession.get.emptyDataFrame
-
-    override def checkIfMandatoryColumnsArePresent: JsonDataFrame = EmptyJsonFlatDataFrame()
-
-    override def renameTableNameColumn(): JsonDataFrame = this
   }
 }
 

@@ -22,20 +22,21 @@ object SaveCDCMessages {
     val offsets = new LatestAvailableOffsets()
     val valuesWithMetaData = reader
       .read(config.topic, offsets)
-      .value
+      .selectValue
+      .dropNulls
       .withColumnFromValue("__table")
       .withColumnFromValue("__op")
 
     schemaRegistry
-      .foreachParallely {
+      .foreach {
         case (tableName, schema) =>
-          val jsonData = valuesWithMetaData.filterByTableName(tableName).value.toFlattenJsonDF
+          val jsonData = valuesWithMetaData.filterByTableName(tableName).explodeValue(schema)
 
           jsonData
             .withDateColumn()
             .dropExtraColumns()
-            .renameTableNameColumn()
-            .writeTo(config.outputDirectory)
+            .writeTo(tableName,config)
       }
+
   }
 }

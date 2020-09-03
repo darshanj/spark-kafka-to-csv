@@ -1,7 +1,7 @@
 package streaming
 
-import org.apache.spark.sql.QueryTest
-import org.scalatest.Matchers
+import org.apache.spark.sql.{DataFrame, QueryTest}
+import org.scalatest.{Assertion, Matchers}
 import org.scalatest.matchers.{MatchResult, Matcher}
 
 trait DataFrameMatchers extends Matchers {
@@ -14,5 +14,10 @@ trait DataFrameMatchers extends Matchers {
         assert(r.schema == l.schema)
         MatchResult(matches = true, "", "")
     }
+  }
+
+  def checkAnswerAndSchema(actual: DataFrame, expected:DataFrame): Assertion = {
+    checkAnswer(actual, expected)
+    assert(actual.schema == expected.schema)
   }
 }

@@ -5,13 +5,13 @@ import java.sql.Date
 
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.log4j.lf5.LogLevel
-import org.apache.spark.sql.{DataFrame, SaveMode}
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, from_json, get_json_object}
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.streaming.Trigger
-import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
+import org.apache.spark.sql.types._
 
 class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
   private val brokerPort = 9092
@@ -33,138 +33,216 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
     super.afterAll()
   }
 
-  test("should read earliest to latest offset from kafka in consecutive reads") {
-    val topic = newTopic()
-    EmbeddedKafka.createCustomTopic(topic, partitions = 2)
+  test("test flatten") { // TODO: move to respective test suites
+    withTempDir {
+      checkPointsDir =>
+        withTempDir {
+          outputTempDir =>
+            withTempPath { testPath =>
+              val testDataString1 = raw"""{"a":"record1", "b":1 , "d": "sds" ,"__op":"c", "__table": "t1"}"""
+              val testDataString2 = raw"""{"a":"record1", "b":1 , "c": 3.4 ,"__op":"c", "__table": "t2"}"""
 
-    testDataFor(topic).write
-      .format("kafka")
-      .option("kafka.bootstrap.servers", brokerAddress)
-      .option("topic", topic)
-      .save()
+              Seq(testDataString1, testDataString2).toDS.write.mode("overwrite").json(testPath.getCanonicalPath)
+              val frame = spark.read.json(testPath.getCanonicalPath)
+              val columnName: String = "__table"
+              val df = spark
+                .readStream
+                .schema(frame.schema)
+                .json(testPath.getCanonicalPath)
 
-    val df: DataFrame = spark.readStream
-      .format("kafka")
-      .option("subscribe", topic)
-      .option("includeTimestamp", true)
-      .option("startingOffsets", "earliest")
-      .option("kafka.bootstrap.servers", brokerAddress)
-      .option("checkpointLocation", "./checkpointsDir")
-      .load
+              val t1Schema = StructType(Seq(
+                StructField("a", StringType, nullable = true),
+                StructField("b", IntegerType, nullable = true),
+                StructField("d", StringType, nullable = true),
+                StructField("__op", StringType, nullable = true),
+                StructField("__table", StringType, nullable = true)
+              ))
 
-    val query = df.select(col("value").cast(StringType)).writeStream
-      .format("csv")
-      .option("path", "./output/1/")
-      .trigger(Trigger.Once())
-      .option("checkpointLocation", "./checkpointsDir")
-      .start()
+              val t2Schema = StructType(Seq(
+                StructField("a", StringType, nullable = true),
+                StructField("b", IntegerType, nullable = true),
+                StructField("c", DoubleType, nullable = true),
+                StructField("__op", StringType, nullable = true),
+                StructField("__table", StringType, nullable = true)
+              ))
+              val finalDF = df.withColumn(columnName, get_json_object(col("value"), "$." + columnName))
 
-    query.awaitTermination()
+              val allQueries = Map("t1" -> t1Schema, "t2" -> t2Schema).foldLeft(Seq[StreamingQuery]()) {
+                case (memo, (tableName, s)) => {
+                  val dfToWrite = finalDF.where(col(columnName) === tableName)
+                    .select(from_json($"value", s).as("json")).select("json.*")
+                  val query = dfToWrite
+                    .writeStream.trigger(Trigger.Once())
+                    .partitionBy("a")
+                    .option("checkpointLocation", s"${checkPointsDir.getAbsolutePath}/$tableName")
+                    .outputMode(OutputMode.Append)
+                    .option("path", s"${outputTempDir.getAbsolutePath}/tableName=$tableName")
+                    .option("header", "true")
+                    .format("csv")
+                    .start()
 
-    testDataFor1(topic).write
-      .format("kafka")
-      .option("kafka.bootstrap.servers", brokerAddress)
-      .option("topic", topic)
-      .save()
+                  memo :+ query
+                }
+              }
+              spark.streams.active.last.awaitTermination()
 
-
-    val df2: DataFrame = spark.readStream
-      .format("kafka")
-      .option("subscribe", topic)
-      .option("includeTimestamp", true)
-      .option("startingOffsets", "earliest")
-      .option("kafka.bootstrap.servers", brokerAddress)
-      .option("checkpointLocation", "./checkpointsDir")
-      .load
-
-    val query2 = df2.select(col("value").cast(StringType)).writeStream
-      .format("csv")
-      .option("path", "./output/2/")
-      .trigger(Trigger.Once())
-      .option("checkpointLocation", "./checkpointsDir")
-      .start()
-
-    query2.awaitTermination()
-
-    val df3: DataFrame = spark.readStream
-      .format("kafka")
-      .option("subscribe", topic)
-      .option("includeTimestamp", true)
-      .option("startingOffsets", "earliest")
-      .option("kafka.bootstrap.servers", brokerAddress)
-      .option("checkpointLocation", "./checkpointsDir")
-      .load
-
-    val query3 = df3.select(col("value").cast(StringType)).writeStream
-      .format("csv")
-      .option("path", "./output/3/")
-      .trigger(Trigger.Once())
-      .option("checkpointLocation", "./checkpointsDir")
-      .start()
-
-    query3.awaitTermination()
-
-
-
+              //          allQueries.last.awaitTermination(Long.MaxValue) // As we use Trigger.Once, this timeout should never be hit. If job hangs that means we have a real problem
+              //          allQueries.foreach(_.awaitTermination(Long.MaxValue)) // As we use Trigger.Once, this timeout should never be hit. If job hangs that means we have a real problem
+            }
+        }
+    }
   }
 
-  test("should read earliest to latest offset from kafka from one table when data is present") {
-    val topic = newTopic()
-        EmbeddedKafka.createCustomTopic(topic, partitions = 2)
-    val input = testDataFor(topic)
-    input.write
-          .format("kafka")
-          .option("kafka.bootstrap.servers", brokerAddress)
-          .option("topic", topic)
-          .save()
-        val config = new CDCConfig(Seq(brokerAddress, topic, "outputDir"))
-        val actual = KafkaReader(config.kafkaConfig).read(topic)
-    actual.value should beSameAs(KakfaDataFrame(input.select("value")))
+  test("should read earliest to latest offset from kafka in consecutive reads") {
+    withTempDir {
+      checkPointsDir =>
+        withTempDir {
+          outputTempDir =>
+            val topic = newTopic()
+            EmbeddedKafka.createCustomTopic(topic, partitions = 2)
+
+            testDataFor(topic).write
+              .format("kafka")
+              .option("kafka.bootstrap.servers", brokerAddress)
+              .option("topic", topic)
+              .save()
+
+            val df: DataFrame = spark.readStream
+              .format("kafka")
+              .option("subscribe", topic)
+              .option("includeTimestamp", true)
+              .option("startingOffsets", "earliest")
+              .option("kafka.bootstrap.servers", brokerAddress)
+              .load
+
+            val query = df.select(col("value").cast(StringType)).writeStream
+              .format("csv")
+              .option("path", s"${outputTempDir.getAbsolutePath}/1/")
+              .trigger(Trigger.Once())
+              .option("checkpointLocation", checkPointsDir.getAbsolutePath)
+              .start()
+
+            query.awaitTermination()
+
+            testDataFor1(topic).write
+              .format("kafka")
+              .option("kafka.bootstrap.servers", brokerAddress)
+              .option("topic", topic)
+              .save()
+
+            val df2: DataFrame = spark.readStream
+              .format("kafka")
+              .option("subscribe", topic)
+              .option("includeTimestamp", true)
+              .option("startingOffsets", "earliest")
+              .option("kafka.bootstrap.servers", brokerAddress)
+              .load
+
+            val query2 = df2.select(col("value").cast(StringType)).writeStream
+              .format("csv")
+              .option("path", s"${outputTempDir.getAbsolutePath}/2/")
+              .trigger(Trigger.Once())
+              .option("checkpointLocation", checkPointsDir.getAbsolutePath)
+              .start()
+
+            query2.awaitTermination()
+
+            val df3: DataFrame = spark.readStream
+              .format("kafka")
+              .option("subscribe", topic)
+              .option("includeTimestamp", true)
+              .option("startingOffsets", "earliest")
+              .option("kafka.bootstrap.servers", brokerAddress)
+              .load
+
+            val query3 = df3.select(col("value").cast(StringType)).writeStream
+              .format("csv")
+              .option("path", s"${outputTempDir.getAbsolutePath}/3/")
+              .trigger(Trigger.Once())
+              .option("checkpointLocation", checkPointsDir.getAbsolutePath)
+              .start()
+
+            query3.awaitTermination()
+        }
+    }
 
   }
 
   test("should read and validate our output csvs for multiple datasources") {
     withDefaultTimeZone(TimeZoneUTC) {
       withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
-
         withTempDir {
-          d => {
-            Map("datasource1" -> newTopic(),"datasource2" -> newTopic()).foreach {
-              case (datasource,topic) => {
+          checkPointsDir =>
+            withTempDir {
+              outputTempDir => {
+                val outputBaseDirectory = Paths.get(outputTempDir.getAbsolutePath, "/raw/stream/")
+                Seq("datasource1", "datasource2").foreach {
+                  datasource =>
+                    val topic = CreateNewKafkaTopic()
+                    AddData(topic, testDataFor(topic))
+                    val outputDir = Paths.get(outputBaseDirectory.toAbsolutePath.toString, datasource).toAbsolutePath.toString
+                    val checkPointDirectory = Paths.get(checkPointsDir.getAbsolutePath, datasource).toAbsolutePath.toString
 
-                EmbeddedKafka.createCustomTopic(topic, partitions = 2)
-                val testdata = testDataFor(topic)
-                testdata.write
-                  .format("kafka")
-                  .option("kafka.bootstrap.servers", brokerAddress)
-                  .option("topic", topic)
-                  .save()
-                val outputDir = Paths.get(d.getAbsolutePath, "/raw/stream/" + datasource).toAbsolutePath.toString
-//                val outputDir = "./raw/stream/" + datasource
+                    val config = new CDCConfig(Seq(brokerAddress, topic, outputDir, checkPointDirectory))
+                    SaveCDCMessages.save(config = config, schemaRegistry = SchemaRegistryFromArguments(Seq()), reader = KafkaReader(config.kafkaConfig))
+                }
 
-                val config = new CDCConfig(Seq(brokerAddress, topic, outputDir))
-                SaveCDCMessages.save(config, SchemaRegistryFromArguments(Seq()), KafkaReader(config.kafkaConfig))
+                spark.streams.active.last.awaitTermination() // Handle waiting in correct way.
 
-                val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
-                val expectedt1DF = Seq(
-                  ("c", "record3", 3, "sds3", Date.valueOf("2016-12-02")),
-                  ("c", "record1", 1, "sds", Date.valueOf("2016-12-01")))
-                  .toDF("__op", "a", "b", "d", "date")
-                checkAnswer(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t1Path), expectedt1DF)
+                Seq("datasource1", "datasource2").foreach {
+                  datasource => {
+                    val outputDir = Paths.get(outputBaseDirectory.toAbsolutePath.toString, datasource).toAbsolutePath.toString
 
-                val t2Path = Paths.get(outputDir, s"/tableName=t2").toAbsolutePath.toString
-                val expectedt2DF = Seq(
-                  ("c", "record2", 2, 3.4d, Date.valueOf("2016-12-02")))
-                  .toDF("__op", "a", "b", "c", "date")
-                checkAnswer(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t2Path), expectedt2DF)
+                    val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
+                    val expectedt1DF = Seq(
+                      ("record3", 3, "sds3", "c", Date.valueOf("2016-12-02")),
+                      ("record1", 1, "sds", "c", Date.valueOf("2016-12-01")))
+                      .toDF("a", "b", "d", "__op", "date")
+                    checkAnswer(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t1Path), expectedt1DF)
+
+                    val t2Path = Paths.get(outputDir, s"/tableName=t2").toAbsolutePath.toString
+                    val expectedt2DF = Seq(
+                      ("record2", 2, 3.4d, "c", Date.valueOf("2016-12-02")))
+                      .toDF("a", "b", "c", "__op", "date")
+                    checkAnswer(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t2Path), expectedt2DF)
+
+                  }
+                }
+                // wait for last
+                // after last is terminated
+                // check if any active queries
+                // repeat (wait for last in active)
+                // until all queries are terminated
+                // check if all queries has no exception
+
+                // 1..n do 1.wait, once 1 terminates, 2.wait once 2 terminates ... n terminates
+
+                // run all waits in async mode which will give list of futures
+                // wait for all futures to end
+
+                //                spark.streams.awaitAnyTermination()
+                //                spark.streams.active.foreach(_.awaitTermination())
+
+                // handle corrupt records: _corrupt_record. Filter and write it to errors.csv
               }
             }
-
-            // handle corrupt records: _corrupt_record. Filter and write it to errors.csv
-          }
         }
       }
     }
+  }
+
+  def CreateNewKafkaTopic(numOfPartitions: Int = 3): String = {
+    val topic = newTopic()
+    EmbeddedKafka.createCustomTopic(topic, partitions = numOfPartitions)
+    topic
+  }
+
+  def AddData(topic: String, df: DataFrame): Unit = {
+    df.write
+      .format("kafka")
+      .option("kafka.bootstrap.servers", brokerAddress)
+      .option("topic", topic)
+      .save()
   }
 
 }
