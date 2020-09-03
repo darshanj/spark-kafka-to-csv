@@ -14,7 +14,8 @@ class SparkStreamTestBase extends StreamTest with SharedSparkSession {
   def testDataFor(topic: String): DataFrame = Seq(
     (topic, raw"""{"a":"record1", "b":1 , "d": "sds" ,"__op":"c","__name":"name","__table":"t1","__lsn":0,"__txId":0,"__source_ts_ms":$ts1,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
     (topic, raw"""{"a":"record3", "b":3 , "d": "sds3" ,"__op":"c","__name":"name","__table":"t1","__lsn":0,"__txId":0,"__source_ts_ms":$ts2,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
-    (topic, raw"""{"a":"record2", "b":2, "c" : 3.4  ,"__op":"c","__name":"name","__table":"t2","__lsn":0,"__txId":0,"__source_ts_ms":$ts2,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""")
+    (topic, raw"""{"a":"record2", "b":2, "c" : 3.4  ,"__op":"c","__name":"name","__table":"t2","__lsn":0,"__txId":0,"__source_ts_ms":$ts2,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}""""),
+    (topic, null)
   ).toDF("topic", "value")
   // TODO: Refactor and make a test data factory. Follow DRY
   def testDataFor1(topic: String): DataFrame = Seq(
