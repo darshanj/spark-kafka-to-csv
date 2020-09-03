@@ -93,6 +93,7 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
     }
   }
 
+<<<<<<< HEAD
   test("should read earliest to latest offset from kafka in consecutive reads") {
     withTempDir {
       checkPointsDir =>
@@ -165,6 +166,20 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
             query3.awaitTermination()
         }
     }
+=======
+  test("should read earliest to latest offset from kafka from one table when data is present") {
+    val topic = newTopic()
+        EmbeddedKafka.createCustomTopic(topic, partitions = 2)
+    val input = testDataFor(topic)
+    input.write
+          .format("kafka")
+          .option("kafka.bootstrap.servers", brokerAddress)
+          .option("topic", topic)
+          .save()
+        val config = new CDCConfig(Seq(brokerAddress, topic, "outputDir"))
+        val actual = KafkaReader(config.kafkaConfig).read(topic)
+    actual.value should beSameAs(KafkaDataFrame(input.select("value")))
+>>>>>>> 0f336992def62982d3bfdafdd7519029bdb62d47
 
   }
 
