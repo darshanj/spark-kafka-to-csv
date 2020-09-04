@@ -7,10 +7,8 @@ package streaming
 //    "qty":null,
 //    "__op":"d",
 //    "__name":"postgresphdhqaairflow",
-//    "__table":"inventory",
 //    "__lsn":139234131816,
 //    "__txId":2673501,
-//    "__source_ts_ms":1598596786555
 //    ,"__source_schema":"public",
 //    "__ts_ms":1598596786999,
 //    "__deleted":"true"

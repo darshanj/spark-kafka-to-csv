@@ -12,9 +12,16 @@ class SparkStreamTestBase extends StreamTest with SharedSparkSession {
 
   import testImplicits._
   def testDataFor(topic: String): DataFrame = Seq(
+    // Table 1 records
     (topic, raw"""{"a":"record1", "b":1 , "d": "sds" ,"__op":"c","__name":"name","__table":"t1","__lsn":0,"__txId":0,"__source_ts_ms":$ts1,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
     (topic, raw"""{"a":"record3", "b":3 , "d": "sds3" ,"__op":"c","__name":"name","__table":"t1","__lsn":0,"__txId":0,"__source_ts_ms":$ts2,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
+    // // Table 2 delete records
+//    (topic, raw"""{"a":"record4", "b":4 , "d": "sds4" ,"__op":"d","__name":"name","__table":"t1","__lsn":0,"__txId":0,"__source_ts_ms":$ts1,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
+    // Table 2 records
     (topic, raw"""{"a":"record2", "b":2, "c" : 3.4  ,"__op":"c","__name":"name","__table":"t2","__lsn":0,"__txId":0,"__source_ts_ms":$ts2,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}""""),
+    // Table 2 delete records
+//    (topic, raw"""{"a":"record5", "b":5 , "d": "sds5" ,"__op":"d","__name":"name","__table":"t2","__lsn":0,"__txId":0,"__source_ts_ms":$ts1,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""),
+    // null value record
     (topic, null)
   ).toDF("topic", "value")
   // TODO: Refactor and make a test data factory. Follow DRY

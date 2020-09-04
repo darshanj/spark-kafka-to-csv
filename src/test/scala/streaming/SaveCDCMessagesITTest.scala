@@ -5,13 +5,15 @@ import java.sql.Date
 
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.log4j.lf5.LogLevel
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
+import org.apache.spark.sql.execution.streaming.MemoryStream
 import org.apache.spark.sql.functions.{col, from_json, get_json_object}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.apache.spark.sql.types._
+
 
 class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
   private val brokerPort = 9092
@@ -31,6 +33,23 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
   override def afterAll(): Unit = {
     EmbeddedKafka.stop()
     super.afterAll()
+  }
+  test("test stream with memory stream source") {
+      val input = MemoryStream[Int]
+      val mapped = input.toDS().map(_ + 1)
+
+    testStream(mapped)(
+      StartStream(),
+      AddData(input,1,2,3),
+      CheckAnswerRowsByFunc(rows => {
+        import scala.collection.JavaConverters._
+        val expected = Seq(2,3,4).toDF()
+        val df=spark.createDataFrame(rows.asJava,expected.schema)
+        checkAnswer(df,expected)
+      },lastOnly = false),
+      StopStream
+    )
+//      runStressTest(mapped, AddData(input, _: _*))
   }
 
   test("test flatten") { // TODO: move to respective test suites
@@ -184,7 +203,7 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
                     val checkPointDirectory = Paths.get(checkPointsDir.getAbsolutePath, datasource).toAbsolutePath.toString
 
                     val config = new CDCConfig(Seq(brokerAddress, topic, outputDir, checkPointDirectory))
-                    SaveCDCMessages.save(config = config, schemaRegistry = SchemaRegistryFromArguments(Seq()), reader = KafkaReader(config.kafkaConfig))
+                    SaveCDCMessages.save(config = config, schemaRegistry = SchemaRegistryFromArguments(Seq()), reader = KafkaReader(config))
                 }
 
                 spark.streams.active.last.awaitTermination() // Handle waiting in correct way.
@@ -195,16 +214,17 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers {
 
                     val t1Path = Paths.get(outputDir, s"/tableName=t1").toAbsolutePath.toString
                     val expectedt1DF = Seq(
-                      ("record3", 3, "sds3", "c", Date.valueOf("2016-12-02")),
-                      ("record1", 1, "sds", "c", Date.valueOf("2016-12-01")))
+                      ("record3", Some(3), "sds3", "c", Date.valueOf("2016-12-02")),
+                      ("record1", Some(1), "sds", "c", Date.valueOf("2016-12-01")))
                       .toDF("a", "b", "d", "__op", "date")
-                    checkAnswer(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t1Path), expectedt1DF)
+
+                    checkAnswerAndSchema(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t1Path), expectedt1DF)
 
                     val t2Path = Paths.get(outputDir, s"/tableName=t2").toAbsolutePath.toString
                     val expectedt2DF = Seq(
-                      ("record2", 2, 3.4d, "c", Date.valueOf("2016-12-02")))
+                      ("record2", Some(2), Some(3.4d), "c", Date.valueOf("2016-12-02")))
                       .toDF("a", "b", "c", "__op", "date")
-                    checkAnswer(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t2Path), expectedt2DF)
+                    checkAnswerAndSchema(spark.read.options(Map("header" -> "true", "inferSchema" -> "true")).csv(t2Path), expectedt2DF)
 
                   }
                 }

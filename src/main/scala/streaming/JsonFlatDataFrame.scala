@@ -4,19 +4,19 @@ import java.nio.file.Paths
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.MILLIS_PER_SECOND
-import org.apache.spark.sql.functions.{col, to_date}
-import org.apache.spark.sql.streaming.{OutputMode, Trigger}
+import org.apache.spark.sql.functions.{col, lit, to_date, when}
+import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery, Trigger}
 import org.apache.spark.sql.types.TimestampType
 
 sealed trait JsonDataFrame extends DataFrameLike {
 
-  def withDateColumn(): JsonDataFrame
+  def sourceTSToDateColumn(): JsonDataFrame
 
   def dropExtraColumns(): JsonDataFrame
 
   def checkIfMandatoryColumnsArePresent: JsonDataFrame
 
-  def writeTo(tableName: String, config: Config): Unit
+  def writeStreamTo(tableName: String, config: Config): StreamingQuery
 }
 
 object JsonDataFrame {
@@ -31,18 +31,18 @@ object JsonDataFrame {
 
     private val datePartitionColumnName = "date"
 
-    override def withDateColumn(): JsonDataFrame = {
+    override def sourceTSToDateColumn(): JsonDataFrame = {
       JsonFlatDataFrame(dataFrame.withColumn(datePartitionColumnName,
-        to_date((col("__source_ts_ms") / MILLIS_PER_SECOND).cast(TimestampType))))
+        to_date((col("__source_ts_ms") / MILLIS_PER_SECOND).cast(TimestampType))).drop("__source_ts_ms"))
     }
 
     override def dropExtraColumns(): JsonDataFrame = {
-      val colsToDrop = Seq("__name","__lsn","__txId","__source_ts_ms","__source_schema","__ts_ms","__deleted","__table")
+      val colsToDrop = Seq("__name","__lsn","__txId","__source_schema","__ts_ms","__deleted","__table")
       JsonFlatDataFrame(dataFrame.drop(colsToDrop: _*))
     }
 
-    override def writeTo(tableName: String, config: Config): Unit = {
-      val q = dataFrame.writeStream
+    override def writeStreamTo(tableName: String, config: Config): StreamingQuery = {
+      dataFrame.writeStream
         .trigger(Trigger.Once())
         .partitionBy(datePartitionColumnName)
         .option("checkpointLocation", Paths.get(config.checkPointDirectory, "/",tableName).toString)

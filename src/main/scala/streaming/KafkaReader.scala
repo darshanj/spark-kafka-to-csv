@@ -2,12 +2,14 @@ package streaming
 
 import org.apache.spark.sql.SparkSession
 trait Reader {
-  def read(topic:String, offsets: Offsets) : KafkaDataFrame
+  def read(): KafkaDataFrame
 }
-case class KafkaReader(kafkaConfig: KafkaConfig) extends Reader {
+case class KafkaReader(config: Config) extends Reader {
   def spark: SparkSession = SparkSession.getActiveSession.get
-  def read(topic:String, offsets: Offsets = new LatestAvailableOffsets()) : KafkaDataFrame = {
-    val readOptions = offsets.options ++ kafkaConfig.options ++ Map("subscribe" -> topic,"includeTimestamp" -> "true")
+  def read(): KafkaDataFrame = {
+
+    val kafkaConfig = config.kafkaConfig
+    val readOptions = kafkaConfig.options ++ Map("subscribe" -> config.topic,"includeTimestamp" -> "true")
 
     KafkaDataFrame(spark.readStream
       .format("kafka")

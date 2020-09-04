@@ -16,12 +16,12 @@ class JsonFlatDataFrameTest extends QueryTest with SharedSQLContext with DataFra
   private val EPOCH_START_MILLIS = 0L
   test("should return a JSON data frame with Date Column") {
     withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
-      val inputDF = JsonDataFrame.of(Seq(EPOCH_START_MILLIS).toDF("__source_ts_ms"))
+      val inputDF = JsonDataFrame.of(Seq((1,EPOCH_START_MILLIS)).toDF("a","__source_ts_ms"))
       val expectedDF = JsonDataFrame.of(
-        Seq((EPOCH_START_MILLIS, Date.valueOf("1970-01-01")))
-          .toDF("__source_ts_ms", "date"))
+        Seq((1, Date.valueOf("1970-01-01")))
+          .toDF("a", "date"))
 
-      inputDF.withDateColumn() should beSameAs(expectedDF)
+      inputDF.sourceTSToDateColumn() should beSameAs(expectedDF)
     }
   }
 
@@ -31,8 +31,8 @@ class JsonFlatDataFrameTest extends QueryTest with SharedSQLContext with DataFra
 
   test ("should drop extra columns") {
     val inputDF = JsonDataFrame.of(
-      Seq((2, "name",0,0,EPOCH_START_MILLIS,"ss",0, "true","t1"))
-      .toDF("a", "__name","__lsn","__txId","__source_ts_ms","__source_schema","__ts_ms","__deleted","__table"))
+      Seq((2, "name",0,0,"ss",0, "true","t1"))
+      .toDF("a", "__name","__lsn","__txId","__source_schema","__ts_ms","__deleted","__table"))
     val expectedDF = JsonDataFrame.of(Seq(2).toDF("a"))
     inputDF.dropExtraColumns() should beSameAs(expectedDF)
   }
