@@ -1,18 +1,16 @@
 package streaming
 
-
+// Topic: DATABASE_NAME
 // {
 //    "id":999,
 //    "item":null,
 //    "qty":null,
 //    "__op":"d",
-//    "__name":"postgresphdhqaairflow",
 //    "__lsn":139234131816,
 //    "__txId":2673501,
-//    ,"__source_schema":"public",
-//    "__ts_ms":1598596786999,
-//    "__deleted":"true"
+//    "__ts_ms":1598596786999
 //}
+
 
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
