@@ -19,20 +19,16 @@ class TableDataFrameTest extends QueryTest with SharedSQLContext with DataFrameM
       val inputDF = ExplodedTableDataFrame.of(Seq((1,EPOCH_START_MILLIS)).toDF("a","__source_ts_ms"))
       val expectedDF = ExplodedTableDataFrame.of(
         Seq((1, Date.valueOf("1970-01-01")))
-          .toDF("a", "date"))
+          .toDF("a", "dt"))
 
       inputDF.sourceTSToDateColumn should beSameAs(expectedDF)
     }
   }
 
-  test("should write the data frame to a specified output directory") {
-
-  }
-
   test ("should drop extra columns") {
     val inputDF = ExplodedTableDataFrame.of(
-      Seq((2, "name",0,0,"ss",0, "true","t1"))
-      .toDF("a", "__name","__lsn","__txId","__source_schema","__ts_ms","__deleted","__table"))
+      Seq((2, "name",0,0,"ss",0, "true"))
+      .toDF("a", "__name","__lsn","__txId","__source_schema","__ts_ms","__deleted"))
     val expectedDF = ExplodedTableDataFrame.of(Seq(2).toDF("a"))
     inputDF.dropExtraColumns should beSameAs(expectedDF)
   }
