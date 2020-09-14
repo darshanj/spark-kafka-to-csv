@@ -3,11 +3,10 @@ package streaming.it
 import java.nio.file.Paths
 
 import net.manub.embeddedkafka.EmbeddedKafka
-import org.apache.spark.sql.streaming.StreamingQueryException
 import org.scalatest.Assertion
+import streaming._
 import streaming.config.CDCConfig
 import streaming.write.OutputFileProvider
-import streaming.{DataFrameMatchers, EmbeddedKafkaCluster, KafkaReader, SaveCDCMessages, SparkStreamTestBase, TestData}
 
 class SaveCDCCheckPointTest extends SparkStreamTestBase with DataFrameMatchers with TestData with EmbeddedKafkaCluster {
   test("should not get any data if no data is present after checkpoint is done") {
@@ -69,44 +68,33 @@ class SaveCDCCheckPointTest extends SparkStreamTestBase with DataFrameMatchers w
         verifyOutputData(topic, config)
 
         // Read again without pushing any more data
-        val errorconfig = new CDCConfig(Seq(brokerAddress, topic, outputBaseDirectory, jobID, classOf[ErrorOutputProvider].getCanonicalName))
+        val errorConfig = new CDCConfig(Seq(brokerAddress, topic, outputBaseDirectory, jobID, classOf[ErrorOutputProvider].getCanonicalName))
 
-        val e = intercept[StreamingQueryException] {
-          val secondTimeQuery = SaveCDCMessages.save(config = errorconfig, reader = KafkaReader(errorconfig))
-          secondTimeQuery.processAllAvailable()
-        }
+        //val e = intercept[StreamingQueryException] {
+        val secondTimeQuery = SaveCDCMessages.save(config = errorConfig, reader = KafkaReader(errorConfig))
+        secondTimeQuery.processAllAvailable()
+        //}
 
+        println(config.outputDirectories.outputDataDirectory)
         verifyOutputData(topic, config)
 
-        val testData2 = TestData.withNewTopic(topic => EmbeddedKafka.createCustomTopic(topic, partitions = 3)) +
+        val testData2 = TestData.withExistingTopic(topic) +
           TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) +
           TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02)
 
         testData2 addDataToKafka (brokerAddress)
 
-        val configTwo = new CDCConfig(Seq(brokerAddress, topic, outputBaseDirectory, jobID, classOf[OutputFileProvider].getCanonicalName))
-        val secondTimeQuery = SaveCDCMessages.save(config = configTwo, reader = KafkaReader(config))
+        val thirdTimeQuery = SaveCDCMessages.save(config = config, reader = KafkaReader(config))
+        thirdTimeQuery.awaitTermination()
 
-        secondTimeQuery.awaitTermination()
-
-        verifyOutputData(topic, config)
-
+        val tableOnes: Seq[TableOne] = Seq(TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01),
+          TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01)
+        )
+        val tableTwos: Seq[TableTwo] = Seq(TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02),
+          TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02)
+        )
+        verifyOutputData(topic, config, tableOnes, tableTwos)
       }
-    }
-  }
-
-  def verifyOutputData(topic: String, config: CDCConfig): Assertion = {
-    TableOne.readFrom(config.outputDirectories.outputDataDirectory) {
-      (data, _) =>
-
-        data should beSameAs(TestData(topic) +
-          TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) toOutputDF)
-    }
-
-    TableTwo.readFrom(config.outputDirectories.outputDataDirectory) {
-      (data, _) =>
-        data should beSameAs(TestData(topic) +
-          TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02) toOutputDF)
     }
   }
 
@@ -193,4 +181,43 @@ class SaveCDCCheckPointTest extends SparkStreamTestBase with DataFrameMatchers w
     }
   }
 
+  def verifyOutputData(topic: String, config: CDCConfig, tableOnes: Seq[TableOne], tableTwos: Seq[TableTwo]): Unit = {
+
+    var tableOneExpectedData = TestData(topic)
+    tableOnes.foreach(tableOne => {
+      tableOneExpectedData = tableOneExpectedData + tableOne
+    })
+
+    TableOne.readFrom(config.outputDirectories.outputDataDirectory) {
+      (data, _) =>
+        data.show(false)
+        data should beSameAs(tableOneExpectedData toOutputDF)
+    }
+
+    var tableTwoExpectedData = TestData(topic)
+    tableTwos.foreach(tableTwo => {
+      tableTwoExpectedData = tableTwoExpectedData + tableTwo
+    })
+
+    TableTwo.readFrom(config.outputDirectories.outputDataDirectory) {
+      (data, _) =>
+        data should beSameAs(tableTwoExpectedData toOutputDF)
+    }
+  }
+
+  def verifyOutputData(topic: String, config: CDCConfig): Assertion = {
+    TableOne.readFrom(config.outputDirectories.outputDataDirectory) {
+      (data, _) =>
+        data should beSameAs(TestData(topic) +
+          TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) toOutputDF)
+    }
+
+    TableTwo.readFrom(config.outputDirectories.outputDataDirectory) {
+      (data, _) =>
+        data should beSameAs(TestData(topic) +
+          TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02) toOutputDF)
+    }
+
+
+  }
 }
