@@ -55,6 +55,10 @@ trait TestData {
       topicCreationFn(topic)
       new TestData(topic)
     }
+
+    def withExistingTopic(topic: String ):TestData = {
+      new TestData(topic)
+    }
   }
 
 

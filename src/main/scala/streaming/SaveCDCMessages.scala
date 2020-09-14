@@ -33,7 +33,7 @@ object SaveCDCMessages {
       .withTableColumn.dataStream.writeStream(config)
   }
 
-  val progress = InMemoryQueryProgressListener()
+  val progress: InMemoryQueryProgressListener = InMemoryQueryProgressListener()
   def startTracking(): InMemoryQueryProgressListener = {
     val spark = SparkSession.getActiveSession.get
     spark.streams.addListener(progress)
@@ -43,11 +43,11 @@ object SaveCDCMessages {
   trait QueryTrackingLike {
     val id: UUID
     val start: QueryStartedEvent
-    val progress: QueryTrackingLike
+    val progress: mutable.Queue[StreamingQueryProgress]
     val end: QueryTerminatedEvent
   }
 
-  private case class InMemoryQueryProgressListener(queries :mutable.Map[UUID,QueryTrackingLike] = mutable.Map.empty) extends StreamingQueryListener {
+  case class InMemoryQueryProgressListener(queries :mutable.Map[UUID,QueryTrackingLike] = mutable.Map.empty) extends StreamingQueryListener {
 
     object QueryTracking {
       trait QueryStarted  extends QueryTrackingLike {
@@ -67,7 +67,7 @@ object SaveCDCMessages {
           QueryTrackingEnded(start,queryProgress,event)
         }
 
-        override val progress: QueryTrackingLike = QueryTrackingStarted(start, queryProgress.clone())
+        override val progress: mutable.Queue[StreamingQueryProgress] = queryProgress.clone()
         override val end: QueryTerminatedEvent = throw new UnsupportedOperationException("Query still not ended")
         override val id: UUID = start.id
       }

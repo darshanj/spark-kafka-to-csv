@@ -1,6 +1,5 @@
 package streaming
 
-import com.sun.deploy.util.Waiter
 import org.apache.spark.sql.streaming.{StreamingQueryListener, StreamingQueryProgress}
 import org.apache.spark.sql.streaming.StreamingQueryListener.{QueryProgressEvent, QueryStartedEvent, QueryTerminatedEvent}
 
