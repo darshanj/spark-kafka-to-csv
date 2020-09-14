@@ -18,10 +18,6 @@ case class ValueDataFrame(protected val dataFrame: DataFrame) extends DataFrameL
 
   def withTableColumn: ValueDataFrame = ValueDataFrame(dataFrame.withColumn("__table", get_json_object(col("value"), "$." + "__table")))
 
-  def explodeValue(schema: StructType): ExplodedTableDataFrame = {
-    ExplodedTableDataFrame.of(dataFrame.select(from_json(col("value"), schema).as("json")).select("json.*"))
-  }
-
   def dropNulls: ValueDataFrame = {
     ValueDataFrame(dataFrame.na.drop(Seq("value")))
   }
