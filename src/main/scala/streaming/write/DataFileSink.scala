@@ -28,7 +28,7 @@ class OutputFileProvider extends DataSourceRegister with StreamSinkProvider {
     new DataFileSink(config)
   }
 
-  private def validatedOptions(parameters: Map[String, String]): String = {
+  protected def validatedOptions(parameters: Map[String, String]): String = {
     val argsInString = parameters("args")
     require(argsInString.nonEmpty, "Option args is required to be comma separated")
     argsInString

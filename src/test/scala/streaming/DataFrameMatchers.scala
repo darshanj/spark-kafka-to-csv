@@ -23,6 +23,13 @@ trait DataFrameMatchers extends Matchers {
       MatchResultIsTrue
     }
   }
+  def beEmpty: Matcher[DataFrame] = new Matcher[DataFrame] {
+
+    def apply(left: DataFrame): MatchResult = {
+      checkAnswer(left, spark.emptyDataFrame)
+      MatchResultIsTrue
+    }
+  }
 
   def checkAnswerAndSchema(actual: DataFrame, expected: DataFrame): Assertion = {
     checkAnswer(actual, expected)

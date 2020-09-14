@@ -124,4 +124,23 @@ trait TestData {
     }
   }
 
+  case class TableThree(x: String, y:Int, z:Double, __op: String, timestamp: Long)  extends TestValue {
+    def json = raw"""{"x":"$x", "y":$y , "z": $z ,"__op": "${__op}","__name":"name","__table":"${TableThree.name}","__lsn":0,"__txId":0,"__source_ts_ms":$timestamp,"__source_schema":"ss","__ts_ms":0,"__deleted":"true"}"""
+    override def output: Row = {
+      val totalSchema = outputMetaDataSchema.fields.foldLeft(TableThree.schema)((memo,f) => memo.add(f))
+      new GenericRowWithSchema(Array(__op, x, y, z, TableThree.name, new Date(timestamp)),totalSchema)
+    }
+  }
+
+  object TableThree extends ValueReaderLike {
+    protected def name: String = "t3"
+    protected def schema: StructType = StructType(Seq(
+      StructField("__op", StringType, nullable = true),
+      StructField("x", StringType, nullable = true),
+      StructField("y", IntegerType, nullable = true),
+      StructField("z", DoubleType, nullable = true)
+    ))
+    override def readFrom[Unit](outputDirectory: String)(f: (DataFrame, DataFrame) => Unit): Unit = super.constructDataFrames(outputDirectory,schema,name)(f)
+  }
+
 }

@@ -1,4 +1,4 @@
-package streaming
+package streaming.it
 
 import java.nio.file.Paths
 
@@ -7,10 +7,11 @@ import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
 import org.apache.spark.sql.execution.streaming.MemoryStream
 import org.apache.spark.sql.internal.SQLConf
+import streaming._
 import streaming.config.CDCConfig
 import streaming.write.OutputFileProvider
 
-class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers with TestData with EmbeddedKafkaCluster {
+class SaveCDCMessagesTest extends SparkStreamTestBase with DataFrameMatchers with TestData with EmbeddedKafkaCluster {
 
   import testImplicits._
 
@@ -29,102 +30,6 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers w
       }, lastOnly = false),
       StopStream
     )
-    //      runStressTest(mapped, AddData(input, _: _*))
-  }
-
-  test("should continue reading after checkpoint") {
-    withTempDir {
-      outputTempDir => {
-        val outputBaseDirectory = Paths.get(outputTempDir.getAbsolutePath, "/raw/stream/").toAbsolutePath.toString
-
-        val jobID1 = "job1"
-
-
-        val firstSetOfTestData = TestData.withNewTopic(topic => EmbeddedKafka.createCustomTopic(topic, partitions = 3)) +
-          TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) +
-          NullValue +
-          TableOne("a2", 2, "d1", "u", TimeStamps.ts_with_date_2016_12_02) +
-          TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02)
-
-        var topic = firstSetOfTestData.topic
-        firstSetOfTestData addDataToKafka (brokerAddress)
-
-        val firstSetOftestDataConfig = new CDCConfig(Seq(brokerAddress, topic, outputBaseDirectory, jobID1, classOf[OutputFileProvider].getCanonicalName))
-        SaveCDCMessages.save(config = firstSetOftestDataConfig, reader = KafkaReader(firstSetOftestDataConfig))
-        spark.streams.active.last.awaitTermination()
-
-        TableOne.readFrom(firstSetOftestDataConfig.outputDirectories.outputDataDirectory) {
-          (data, delete) =>
-
-            val expectedDataDF = TestData(firstSetOfTestData.topic) +
-              TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) +
-              TableOne("a2", 2, "d1", "u", TimeStamps.ts_with_date_2016_12_02) toOutputDF
-
-            data should beSameAs(expectedDataDF)
-        }
-
-        TableTwo.readFrom(firstSetOftestDataConfig.outputDirectories.outputDataDirectory) {
-          (data, delete) =>
-            val expectedDataDF = TestData(firstSetOfTestData.topic) +
-              TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02) toOutputDF
-
-            data should beSameAs(expectedDataDF)
-        }
-
-        val secondSetOfTestData = TestData.withExistingTopic(firstSetOfTestData.topic) +
-          TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_11) +
-          NullValue +
-          TableOne("a2", 2, "d1", "u", TimeStamps.ts_with_date_2016_12_21) +
-          TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_21)
-
-        topic = secondSetOfTestData.topic
-        secondSetOfTestData addDataToKafka (brokerAddress)
-
-        val jobID2 = "job2"
-
-        val secondSetOftestDataConfig = new CDCConfig(Seq(brokerAddress, topic, outputBaseDirectory, jobID2, classOf[OutputFileProvider].getCanonicalName))
-        SaveCDCMessages.save(config = secondSetOftestDataConfig, reader = KafkaReader(secondSetOftestDataConfig))
-        spark.streams.active.last.awaitTermination()
-
-        TableOne.readFrom(firstSetOftestDataConfig.outputDirectories.outputDataDirectory) {
-          (data, delete) =>
-
-            val expectedDataDF = TestData(firstSetOfTestData.topic) +
-              TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) +
-              TableOne("a2", 2, "d1", "u", TimeStamps.ts_with_date_2016_12_02) toOutputDF
-
-            data should beSameAs(expectedDataDF)
-        }
-
-        TableTwo.readFrom(firstSetOftestDataConfig.outputDirectories.outputDataDirectory) {
-          (data, delete) =>
-            val expectedDataDF = TestData(firstSetOfTestData.topic) +
-              TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02) toOutputDF
-
-            data should beSameAs(expectedDataDF)
-        }
-
-        TableOne.readFrom(secondSetOftestDataConfig.outputDirectories.outputDataDirectory) {
-          (data, delete) =>
-
-            val expectedDataDF = TestData(secondSetOfTestData.topic) +
-              TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_11) +
-              TableOne("a2", 2, "d1", "u", TimeStamps.ts_with_date_2016_12_21) toOutputDF
-
-            data should beSameAs(expectedDataDF)
-        }
-
-        TableTwo.readFrom(secondSetOftestDataConfig.outputDirectories.outputDataDirectory) {
-          (data, delete) =>
-            val expectedDataDF = TestData(secondSetOfTestData.topic) +
-              TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_21) toOutputDF
-
-            data should beSameAs(expectedDataDF)
-        }
-
-        firstSetOftestDataConfig.outputDirectories.checkPointDataDirectory should equal(secondSetOftestDataConfig.outputDirectories.checkPointDataDirectory)
-      }
-    }
   }
 
   test("should read and validate our output csvs for multiple datasources") {
@@ -197,6 +102,12 @@ class SaveCDCMessagesITTest extends SparkStreamTestBase with DataFrameMatchers w
                   TableTwo("a4", "b4", 4.0, "d", TimeStamps.ts_with_date_2016_12_21) toOutputDF
 
                 delete should beSameAs(expectedDeleteDF)
+            }
+
+            TableThree.readFrom(config.outputDirectories.outputDataDirectory) {
+              (data, delete) =>
+                data should beEmpty
+                delete should beEmpty
             }
           }
         }
