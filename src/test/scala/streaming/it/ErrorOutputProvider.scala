@@ -2,27 +2,25 @@ package streaming.it
 
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.execution.streaming.Sink
+import org.apache.spark.sql.sources.{DataSourceRegister, StreamSinkProvider}
 import org.apache.spark.sql.streaming.OutputMode
 import streaming.KafkaSourceDataFrame
-import streaming.config.{CDCConfig, Config}
-import streaming.write.{OutputFileProvider, SinkLike}
+import streaming.write.SinkLike
 
-class ErrorOutputProvider extends OutputFileProvider {
+class ErrorOutputProvider extends DataSourceRegister with StreamSinkProvider {
   override def createSink(sqlContext: SQLContext, parameters: Map[String, String], partitionColumns: Seq[String], outputMode: OutputMode): Sink = {
-    val config = CDCConfig(validatedOptions(parameters))
-    new ErrorFileSink(config)
+    new ErrorFileSink()
   }
 
   override def shortName(): String = "errorwritePerBatch"
 }
 
-class ErrorFileSink(config: Config) extends SinkLike {
-
-  def processBatch(data: KafkaSourceDataFrame): Unit = {
-    // schema: tableName,value
-    data
-    throw new RuntimeException("Error in writing batch")
-  }
+class ErrorFileSink() extends SinkLike {
 
   override def toString: String = "error"
+
+  override def processBatch(data: KafkaSourceDataFrame): Unit = {
+        println("reached here")
+        throw new RuntimeException("Error in writing batch")
+  }
 }

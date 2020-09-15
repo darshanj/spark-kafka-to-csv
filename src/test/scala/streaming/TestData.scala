@@ -28,6 +28,7 @@ trait TestData {
 
   case class TestData(topic:String,protected val rows: Seq[TestValue] = Seq.empty[TestValue]) {
     def +(value: TestValue):TestData = TestData(topic,rows :+ value)
+    def ++(values: Seq[TestValue]):TestData = TestData(topic,rows ++ values)
     def toDF: DataFrame = rows.map(r => (topic,r.json)).toDF("topic", "value")
     def toOutputDF: DataFrame = {
       if(rows.isEmpty)
@@ -56,7 +57,7 @@ trait TestData {
       new TestData(topic)
     }
 
-    def withExistingTopic(topic: String ):TestData = {
+    def withExistingTopic(topic: String):TestData = {
       new TestData(topic)
     }
   }
