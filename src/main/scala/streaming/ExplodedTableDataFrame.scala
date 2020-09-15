@@ -2,7 +2,7 @@ package streaming
 
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.MILLIS_PER_SECOND
 import org.apache.spark.sql.functions.{col, to_date, when}
-import org.apache.spark.sql.types.TimestampType
+import org.apache.spark.sql.types.{DataType, LongType, StringType, TimestampType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import streaming.write.{CsvWriter, OutputWriter}
 
@@ -30,6 +30,7 @@ object ExplodedTableDataFrame {
     private val operationTypePartitionColumnName = "type"
 
     override def sourceTSToDateColumn: ExplodedTableDataFrame = {
+      requireAnyColumnWith("__source_ts_ms",LongType)
       TableDataFrame(dataFrame.withColumn(datePartitionColumnName,
         to_date((col("__source_ts_ms") / MILLIS_PER_SECOND).cast(TimestampType))).drop("__source_ts_ms"))
     }
@@ -47,12 +48,16 @@ object ExplodedTableDataFrame {
     }
 
     override def withTypeColumn: ExplodedTableDataFrame = {
-      require(dataFrame.schema.fields.map(_.name).contains("__op")) // Guard clause
+      requireAnyColumnWith("__op",StringType)
       TableDataFrame(dataFrame.withColumn(operationTypePartitionColumnName, when(col("__op") isin ("d"), "delete")
         .otherwise("data")))
     }
 
-    override def renameTableColumn: ExplodedTableDataFrame = TableDataFrame(dataFrame.withColumnRenamed("__table", tablePartitionColumnName))
+    override def renameTableColumn: ExplodedTableDataFrame = {
+      requireAnyColumnWith("__table",StringType)
+      TableDataFrame(dataFrame.withColumnRenamed("__table", tablePartitionColumnName))
+    }
+
   }
 
   private case class EmptyTableDataFrame() extends ExplodedTableDataFrame {
@@ -84,5 +89,15 @@ trait DataFrameLike {
 
   def printSchema(): Unit = {
     dataFrame.printSchema()
+  }
+
+  @inline final def requireAnyColumnWith(name: String, datatype:DataType) {
+    require(dataFrame.schema.fields.map(f => (f.name,f.dataType)).contains((name,datatype)), s"expected dataframe to have column named:$name of datatype:$datatype")
+  }
+
+  @inline final def requireOnlyColumnWith(name: String, datatype:DataType) {
+    val fields = dataFrame.schema.fields
+    require(fields.length == 1 && fields.head.name == name && fields.head.dataType == datatype,
+      s"expected dataframe to have only one column named:$name of datatype:$datatype")
   }
 }

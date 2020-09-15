@@ -25,18 +25,20 @@ class SaveCDCMessagesTest extends SparkStreamTestBase with DataFrameMatchers wit
             val testDataForTopic1 = TestData.withNewTopic(topic => EmbeddedKafka.createCustomTopic(topic, partitions = 3)) +
               TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) +
               TableOne("a2", 2, "d1", "u", TimeStamps.ts_with_date_2016_12_02) +
+              NullValue +
               TableOne("a3", 3, "d1", "d", TimeStamps.ts_with_date_2016_12_01) +
               TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02) +
-              TableTwo("a2", "b2", 2.0, "d", TimeStamps.ts_with_date_2016_12_01) +
-              NullValue
+              NullValue +
+              TableTwo("a2", "b2", 2.0, "d", TimeStamps.ts_with_date_2016_12_01)
 
             val testDataForTopic2 = TestData.withNewTopic(topic => EmbeddedKafka.createCustomTopic(topic, partitions = 3)) +
               TableOne("a4", 4, "d2", "c", TimeStamps.ts_with_date_2016_12_11) +
               TableOne("a5", 5, "d2", "u", TimeStamps.ts_with_date_2016_12_21) +
+              NullValue +
               TableOne("a6", 6, "d2", "d", TimeStamps.ts_with_date_2016_12_11) +
               TableTwo("a3", "b3", 3.0, "c", TimeStamps.ts_with_date_2016_12_11) +
-              TableTwo("a4", "b4", 4.0, "d", TimeStamps.ts_with_date_2016_12_21) +
-              NullValue
+              NullValue +
+              TableTwo("a4", "b4", 4.0, "d", TimeStamps.ts_with_date_2016_12_21)
 
             Seq(testDataForTopic1, testDataForTopic2).foreach {
               testData: TestData =>
