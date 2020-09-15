@@ -1,10 +1,7 @@
 package streaming
 
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{QueryTest, Row}
-import org.apache.spark.util.Utils
+import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.test.SharedSQLContext
-import org.apache.spark.sql.types.{IntegerType, LongType, StringType, StructField, StructType}
 
 class ValueDataFrameTest extends QueryTest with SharedSQLContext with DataFrameMatchers {
 

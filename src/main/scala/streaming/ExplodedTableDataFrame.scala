@@ -7,9 +7,9 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import streaming.write.{CsvWriter, OutputWriter}
 
 sealed trait ExplodedTableDataFrame extends DataFrameLike {
-  def renameTableColumn :ExplodedTableDataFrame
+  def renameTableColumn: ExplodedTableDataFrame
 
-  def withTypeColumn :ExplodedTableDataFrame
+  def withTypeColumn: ExplodedTableDataFrame
 
   def sourceTSToDateColumn: ExplodedTableDataFrame
 
@@ -21,9 +21,6 @@ sealed trait ExplodedTableDataFrame extends DataFrameLike {
 
 object ExplodedTableDataFrame {
   def of(dataFrame: DataFrame): ExplodedTableDataFrame = {
-    // TODO: call checkIfMandatoryColumnsArePresent and create appropriate class: JsonFlatDataFrame
-    // or FaultyJsonDataFrame with appropriate writer
-
     if (!dataFrame.schema.fields.isEmpty) TableDataFrame(dataFrame) else EmptyTableDataFrame()
   }
 
@@ -45,17 +42,17 @@ object ExplodedTableDataFrame {
     def csv: OutputWriter = new CsvWriter(dataFrame)
 
     override def writeTo(outputDir: String): Unit = {
-      csv.partitionBy(operationTypePartitionColumnName,tablePartitionColumnName,datePartitionColumnName)
+      csv.partitionBy(operationTypePartitionColumnName, tablePartitionColumnName, datePartitionColumnName)
         .writeTo(outputDir)
     }
 
     override def withTypeColumn: ExplodedTableDataFrame = {
       require(dataFrame.schema.fields.map(_.name).contains("__op")) // Guard clause
-      TableDataFrame(dataFrame.withColumn(operationTypePartitionColumnName,when(col("__op") isin("d"),"delete")
+      TableDataFrame(dataFrame.withColumn(operationTypePartitionColumnName, when(col("__op") isin ("d"), "delete")
         .otherwise("data")))
     }
 
-    override def renameTableColumn: ExplodedTableDataFrame = TableDataFrame(dataFrame.withColumnRenamed("__table",tablePartitionColumnName))
+    override def renameTableColumn: ExplodedTableDataFrame = TableDataFrame(dataFrame.withColumnRenamed("__table", tablePartitionColumnName))
   }
 
   private case class EmptyTableDataFrame() extends ExplodedTableDataFrame {
@@ -84,6 +81,7 @@ trait DataFrameLike {
   def show(): Unit = {
     dataFrame.show(false)
   }
+
   def printSchema(): Unit = {
     dataFrame.printSchema()
   }

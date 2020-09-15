@@ -5,32 +5,12 @@ import java.nio.file.Paths
 import net.manub.embeddedkafka.EmbeddedKafka
 import org.apache.spark.sql.catalyst.util.DateTimeTestUtils.withDefaultTimeZone
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.TimeZoneUTC
-import org.apache.spark.sql.execution.streaming.MemoryStream
 import org.apache.spark.sql.internal.SQLConf
 import streaming._
 import streaming.config.CDCConfig
 import streaming.write.OutputFileProvider
 
 class SaveCDCMessagesTest extends SparkStreamTestBase with DataFrameMatchers with TestData with EmbeddedKafkaCluster {
-
-  import testImplicits._
-
-  test("test stream with memory stream source") {
-    val input = MemoryStream[Int]
-    val mapped = input.toDS().map(_ + 1)
-
-    testStream(mapped)(
-      StartStream(),
-      AddData(input, 1, 2, 3),
-      CheckAnswerRowsByFunc(rows => {
-        import scala.collection.JavaConverters._
-        val expected = Seq(2, 3, 4).toDF()
-        val df = spark.createDataFrame(rows.asJava, expected.schema)
-        checkAnswer(df, expected)
-      }, lastOnly = false),
-      StopStream
-    )
-  }
 
   test("should read and validate our output csvs for multiple datasources") {
     withTempDir {

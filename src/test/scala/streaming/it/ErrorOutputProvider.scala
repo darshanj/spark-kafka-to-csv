@@ -19,8 +19,6 @@ class ErrorFileSink() extends SinkLike {
 
   override def toString: String = "error"
 
-  override def processBatch(data: KafkaSourceDataFrame): Unit = {
-        println("reached here")
-        throw new RuntimeException("Error in writing batch")
-  }
+  override def processBatch(data: KafkaSourceDataFrame): Unit =
+    throw new RuntimeException("Error in writing batch")
 }

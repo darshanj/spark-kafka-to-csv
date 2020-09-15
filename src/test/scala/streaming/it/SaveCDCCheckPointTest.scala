@@ -3,6 +3,7 @@ package streaming.it
 import java.nio.file.Paths
 
 import net.manub.embeddedkafka.EmbeddedKafka
+import org.apache.spark.sql.streaming.StreamingQueryException
 import streaming._
 import streaming.config.CDCConfig
 import streaming.write.OutputFileProvider
@@ -64,24 +65,32 @@ class SaveCDCCheckPointTest extends SparkStreamTestBase with DataFrameMatchers w
         testData addDataToKafka (brokerAddress)
 
         val config = CDCConfig(Seq(brokerAddress, topic, outputBaseDirectory, jobID, classOf[OutputFileProvider].getCanonicalName))
-        SaveCDCMessages.save(config = config, reader = KafkaReader(config)).awaitTermination()
+        val firstTimeQuery = SaveCDCMessages.save(config = config, reader = KafkaReader(config))
+        firstTimeQuery.awaitTermination()
 
         verifyOutputData(topic, config, tableOneSetOneData, tableTwoSetOneData)
+
+        //pushing data to Kafka
+        val testData2 = TestData.withExistingTopic(topic) ++ tableOneSetOneData ++ tableTwoSetOneData
+
+        testData2 addDataToKafka (brokerAddress)
 
         // Read again without pushing any more data
         val errorConfig = CDCConfig(Seq(brokerAddress, topic, outputBaseDirectory, jobID, classOf[ErrorOutputProvider].getCanonicalName))
 
+        assert(!firstTimeQuery.isActive)
+
         val secondTimeQuery = SaveCDCMessages.save(config = errorConfig, reader = KafkaReader(errorConfig))
-        //val e = intercept[StreamingQueryException] {
-        secondTimeQuery.processAllAvailable()
-        //}
 
+        val e: StreamingQueryException = intercept[StreamingQueryException] {
+          secondTimeQuery.awaitTermination()
+        }
+        assert(e.getCause.isInstanceOf[RuntimeException])
+        assert(e.getCause.getMessage == "Error in writing batch")
+        assert(!secondTimeQuery.isActive)
+
+        //verify no change after error sink
         verifyOutputData(topic, config, tableOneSetOneData, tableTwoSetOneData)
-
-        //after error pushing same data to kafka
-        val testData2 = TestData.withExistingTopic(topic) ++ tableOneSetOneData ++ tableTwoSetOneData
-
-        testData2 addDataToKafka (brokerAddress)
 
         SaveCDCMessages.save(config = config, reader = KafkaReader(config)).awaitTermination()
 

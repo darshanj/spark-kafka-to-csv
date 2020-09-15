@@ -48,10 +48,12 @@ class DataFileSink(config: Config) extends SinkLike {
 
     config.schemaRegistry forEachTable {
       tableName: String =>
+
         val tableDataFrame: ExplodedTableDataFrame = data
           .filterByTableName(tableName)
           .selectValue
           .toTableDF
+
         tableDataFrame
           .sourceTSToDateColumn
           .renameTableColumn

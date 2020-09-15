@@ -2,10 +2,6 @@ package streaming.config
 
 import java.nio.file.Paths
 
-import com.esotericsoftware.kryo.Kryo
-import com.esotericsoftware.kryo.serializers.DefaultSerializers.KryoSerializableSerializer
-import streaming.write.OutputFileProvider
-
 trait Config {
   def outputSinkProviderClassName: String
 

@@ -1,7 +1,6 @@
 package streaming
 
-import org.apache.spark.sql.functions.{col, from_json, get_json_object}
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.functions.{col, get_json_object}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import streaming.write.{DataFileStream, DataFileStreamLike}
 

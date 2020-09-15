@@ -1,8 +1,8 @@
 package streaming
 
 import org.apache.spark.sql.{DataFrame, QueryTest}
-import org.scalatest.{Assertion, Matchers}
 import org.scalatest.matchers.{MatchResult, Matcher}
+import org.scalatest.{Assertion, Matchers}
 
 trait DataFrameMatchers extends Matchers {
   self: QueryTest =>
@@ -23,6 +23,7 @@ trait DataFrameMatchers extends Matchers {
       MatchResultIsTrue
     }
   }
+
   def beEmpty: Matcher[DataFrame] = new Matcher[DataFrame] {
 
     def apply(left: DataFrame): MatchResult = {
