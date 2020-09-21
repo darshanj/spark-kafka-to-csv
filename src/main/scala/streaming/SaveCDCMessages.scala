@@ -11,11 +11,11 @@ object SaveCDCMessages {
     val spark = SparkSession
       .builder()
       .appName("SaveCDCMessages")
-      .master(config.sparkMasterUrl)
       .getOrCreate()
     spark.sparkContext.hadoopConfiguration.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
     spark.conf.set("spark.sql.session.timeZone", TimeZoneUTC.getID)
-    save(config, KafkaReader(config))
+    val query = save(config, KafkaReader(config))
+    waitForCompletion(query)
   }
 
   def save(config: Config, reader: Reader): StreamingQuery = {
@@ -24,5 +24,10 @@ object SaveCDCMessages {
       .selectValue
       .dropNulls
       .withTableColumn.dataStream.writeStream(config)
+  }
+
+  def waitForCompletion(query: StreamingQuery): Unit = {
+   query.processAllAvailable()
+    query.stop()
   }
 }

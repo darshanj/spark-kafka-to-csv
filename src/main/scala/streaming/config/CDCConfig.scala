@@ -15,8 +15,6 @@ trait Config {
 
   def outputDirectories: OutputDirectories
 
-  def sparkMasterUrl: String
-
   def jobID: String
 }
 
@@ -33,7 +31,7 @@ case class OutputDirectories(topic: String, outputBaseDirectory: String, jobId: 
 
 }
 
-case class CDCConfig(args: Seq[String]) extends Config {
+case class CDCConfig(args: Seq[String]) extends Config with InMemorySerializable {
   override def kafkaConfig: KafkaConfig = KafkaConfig(args.head)
 
   override def topic: String = args(1)
@@ -44,14 +42,12 @@ case class CDCConfig(args: Seq[String]) extends Config {
 
   override def schemaRegistry: SchemaRegistry = SchemaRegistryFromArguments(args)
 
-  override def sparkMasterUrl: String = args(5)
-
-  override def commaSeparatedArguments: String = args.mkString(",")
-
   override def outputSinkProviderClassName: String = args(4)
+
+  override def commaSeparatedArguments: String = serialize(this)
 }
 
 object CDCConfig {
 
-  def apply(argsCommaSeperated: String): CDCConfig = new CDCConfig(argsCommaSeperated.split(","))
+  def apply(argsCommaSeperated: String): CDCConfig = new CDCConfig(Seq.empty).deserialize[CDCConfig](argsCommaSeperated)
 }

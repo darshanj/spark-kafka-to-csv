@@ -1,13 +1,25 @@
 package streaming
 
+import java.io.{ObjectInputStream, ObjectOutputStream}
+
 import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.sql.types.StringType
+import streaming.config.CDCConfig
+
 
 class ValueDataFrameTest extends QueryTest with SharedSQLContext with DataFrameMatchers {
 
   import testImplicits._
 
+  test("should serialize and deserialize") {
+    val c = new CDCConfig(Seq("a","b"))
+    val str = c.commaSeparatedArguments
+    println(str)
+    val cc = CDCConfig(str)
+    println(cc)
+    assert(c === cc)
+  }
   test("should throw on construction if value column not present") {
     assertColumnRequiredIsThrownBy("value",StringType) {
       ValueDataFrame(Seq((1, "value1")).toDF("a", "b"))
