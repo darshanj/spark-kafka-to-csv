@@ -102,7 +102,7 @@ trait TestData {
 
     override def output: Row = {
       val totalSchema = outputMetaDataSchema.fields.foldLeft(TableOne.schema)((memo, f) => memo.add(f))
-      new GenericRowWithSchema(Array(__op, a, b, d, TableOne.name, new Date(timestamp)), totalSchema)
+      new GenericRowWithSchema(Array(__op, timestamp, a, b, d, TableOne.name, new Date(timestamp)), totalSchema)
     }
   }
 
@@ -111,6 +111,7 @@ trait TestData {
 
     protected def schema: StructType = StructType(Seq(
       StructField("__op", StringType, nullable = true),
+      StructField("__source_ts_ms", LongType, nullable = true),
       StructField("a", StringType, nullable = true),
       StructField("b", IntegerType, nullable = true),
       StructField("d", StringType, nullable = true)
@@ -124,6 +125,7 @@ trait TestData {
 
     protected def schema: StructType = StructType(Seq(
       StructField("__op", StringType, nullable = true),
+      StructField("__source_ts_ms", LongType, nullable = true),
       StructField("a", StringType, nullable = true),
       StructField("b", StringType, nullable = true),
       StructField("c", DoubleType, nullable = true)
@@ -137,7 +139,7 @@ trait TestData {
 
     override def output: Row = {
       val totalSchema = outputMetaDataSchema.fields.foldLeft(TableTwo.schema)((memo, f) => memo.add(f))
-      new GenericRowWithSchema(Array(__op, a, b, c, TableTwo.name, new Date(timestamp)), totalSchema)
+      new GenericRowWithSchema(Array(__op, timestamp, a, b, c, TableTwo.name, new Date(timestamp)), totalSchema)
     }
   }
 
@@ -146,7 +148,7 @@ trait TestData {
 
     override def output: Row = {
       val totalSchema = outputMetaDataSchema.fields.foldLeft(TableThree.schema)((memo, f) => memo.add(f))
-      new GenericRowWithSchema(Array(__op, x, y, z, TableThree.name, new Date(timestamp)), totalSchema)
+      new GenericRowWithSchema(Array(__op, timestamp, x, y, z, TableThree.name, new Date(timestamp)), totalSchema)
     }
   }
 
@@ -155,6 +157,7 @@ trait TestData {
 
     protected def schema: StructType = StructType(Seq(
       StructField("__op", StringType, nullable = true),
+      StructField("__source_ts_ms", LongType, nullable = true),
       StructField("x", StringType, nullable = true),
       StructField("y", IntegerType, nullable = true),
       StructField("z", DoubleType, nullable = true)

@@ -11,7 +11,7 @@ sealed trait ExplodedTableDataFrame extends DataFrameLike {
 
   def withTypeColumn: ExplodedTableDataFrame
 
-  def sourceTSToDateColumn: ExplodedTableDataFrame
+  def withSourceDateColumn(): ExplodedTableDataFrame
 
   def dropExtraColumns: ExplodedTableDataFrame
 
@@ -29,10 +29,10 @@ object ExplodedTableDataFrame {
     private val tablePartitionColumnName = "tableName"
     private val operationTypePartitionColumnName = "type"
 
-    override def sourceTSToDateColumn: ExplodedTableDataFrame = {
+    override def withSourceDateColumn(): ExplodedTableDataFrame = {
       requireAnyColumnWith("__source_ts_ms",LongType)
       TableDataFrame(dataFrame.withColumn(datePartitionColumnName,
-        to_date((col("__source_ts_ms") / MILLIS_PER_SECOND).cast(TimestampType))).drop("__source_ts_ms"))
+        to_date((col("__source_ts_ms") / MILLIS_PER_SECOND).cast(TimestampType))))
     }
 
     override def dropExtraColumns: ExplodedTableDataFrame = {
@@ -61,7 +61,7 @@ object ExplodedTableDataFrame {
   }
 
   private case class EmptyTableDataFrame() extends ExplodedTableDataFrame {
-    override def sourceTSToDateColumn: ExplodedTableDataFrame = this
+    override def withSourceDateColumn(): ExplodedTableDataFrame = this
 
     override def dropExtraColumns: ExplodedTableDataFrame = this
 

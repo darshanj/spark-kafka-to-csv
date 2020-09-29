@@ -17,10 +17,10 @@ class ExplodedTableDataFrameTest extends QueryTest with SharedSQLContext with Da
   test("should return a JSON data frame with Date Column") {
     withSQLConf(SQLConf.SESSION_LOCAL_TIMEZONE.key -> TimeZoneUTC.getID) {
       val inputDF = ExplodedTableDataFrame.of(Seq((1, EPOCH_START_MILLIS)).toDF("a", "__source_ts_ms"))
-      val expectedDF = ExplodedTableDataFrame.of(Seq((1, Date.valueOf("1970-01-01")))
-        .toDF("a", "dt"))
+      val expectedDF = ExplodedTableDataFrame.of(Seq((1, EPOCH_START_MILLIS, Date.valueOf("1970-01-01")))
+        .toDF("a", "__source_ts_ms", "dt"))
 
-      inputDF.sourceTSToDateColumn should beSameAs(expectedDF)
+      inputDF.withSourceDateColumn should beSameAs(expectedDF)
     }
   }
 
@@ -59,11 +59,11 @@ class ExplodedTableDataFrameTest extends QueryTest with SharedSQLContext with Da
   test("should throw when convert timestamp to date if __source_ts_ms column not present or invalid type") {
 
     assertColumnRequiredIsThrownBy("__source_ts_ms", LongType) {
-      ExplodedTableDataFrame.of(Seq((1, EPOCH_START_MILLIS)).toDF("a", "someothercolumn")).sourceTSToDateColumn
+      ExplodedTableDataFrame.of(Seq((1, EPOCH_START_MILLIS)).toDF("a", "someothercolumn")).withSourceDateColumn
     }
 
     assertColumnRequiredIsThrownBy("__source_ts_ms", LongType) {
-      ExplodedTableDataFrame.of(Seq((1, 3.4)).toDF("a", "__source_ts_ms")).sourceTSToDateColumn
+      ExplodedTableDataFrame.of(Seq((1, 3.4)).toDF("a", "__source_ts_ms")).withSourceDateColumn
     }
   }
 

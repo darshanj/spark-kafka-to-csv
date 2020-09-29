@@ -55,7 +55,7 @@ class DataFileSink(config: Config) extends SinkLike {
           .toTableDF
 
         tableDataFrame
-          .sourceTSToDateColumn
+          .withSourceDateColumn
           .renameTableColumn
           .withTypeColumn
           .dropExtraColumns
