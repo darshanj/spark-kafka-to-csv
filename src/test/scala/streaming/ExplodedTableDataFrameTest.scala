@@ -38,24 +38,6 @@ class ExplodedTableDataFrameTest extends QueryTest with SharedSQLContext with Da
     inputDF.renameTableColumn should beSameAs(expectedDF)
   }
 
-  test("should create proper type column ") {
-
-    val inputDF = ExplodedTableDataFrame.of(Seq((2, "u"),(3, "c"),(4, "d")).toDF("a", "__op"))
-
-    val schema = new StructType()
-      .add("a", IntegerType, nullable = false)
-      .add("__op", StringType, nullable = true)
-      .add("type", StringType, nullable = false)
-    import scala.collection.JavaConverters._
-
-    val expectedDF = ExplodedTableDataFrame.of(spark.createDataFrame(Seq(
-      Row(2, "u", "data"),
-      Row(3, "c", "data"),
-      Row(4, "d", "delete")).asJava,schema))
-
-    inputDF.withTypeColumn should beSameAs(expectedDF)
-  }
-
   test("should throw when convert timestamp to date if __source_ts_ms column not present or invalid type") {
 
     assertColumnRequiredIsThrownBy("__source_ts_ms", LongType) {
@@ -64,16 +46,6 @@ class ExplodedTableDataFrameTest extends QueryTest with SharedSQLContext with Da
 
     assertColumnRequiredIsThrownBy("__source_ts_ms", LongType) {
       ExplodedTableDataFrame.of(Seq((1, 3.4)).toDF("a", "__source_ts_ms")).withSourceDateColumn
-    }
-  }
-
-  test("should throw when creating a type column if __op column not present or invalid type") {
-    assertColumnRequiredIsThrownBy("__op", StringType) {
-      ExplodedTableDataFrame.of(Seq((1, "u")).toDF("a", "someothercolumn")).withTypeColumn
-    }
-
-    assertColumnRequiredIsThrownBy("__op", StringType) {
-      ExplodedTableDataFrame.of(Seq((1, 3.4)).toDF("a", "__op")).withTypeColumn
     }
   }
 

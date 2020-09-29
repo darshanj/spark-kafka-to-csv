@@ -54,42 +54,37 @@ class SaveCDCMessagesTest extends SparkStreamTestBase with DataFrameMatchers wit
             val config = new CDCConfig(Seq(brokerAddress, testDataForTopic1.topic, outputBaseDirectory, jobID, classOf[OutputFileProvider].getCanonicalName))
 
             TableOne.readFrom(config.outputDirectories.outputDataDirectory) {
-              (data, delete) =>
+              (data, corrupt) =>
 
                 val expectedDataDF = TestData(testDataForTopic1.topic) +
                   TableOne("a1", 1, "d1", "c", TimeStamps.ts_with_date_2016_12_01) +
                   TableOne("a2", 2, "d1", "u", TimeStamps.ts_with_date_2016_12_02) +
                   TableOne("a4", 4, "d2", "c", TimeStamps.ts_with_date_2016_12_11) +
-                  TableOne("a5", 5, "d2", "u", TimeStamps.ts_with_date_2016_12_21) toOutputDF
-
-                data should beSameAs(expectedDataDF)
-
-                val expectedDeleteDF = TestData(testDataForTopic1.topic) +
+                  TableOne("a5", 5, "d2", "u", TimeStamps.ts_with_date_2016_12_21) +
                   TableOne("a6", 6, "d2", "d", TimeStamps.ts_with_date_2016_12_11) +
                   TableOne("a3", 3, "d1", "d", TimeStamps.ts_with_date_2016_12_01) toOutputDF
 
-                delete should beSameAs(expectedDeleteDF)
+                data should beSameAs(expectedDataDF)
+
+                corrupt should beEmpty
             }
 
             TableTwo.readFrom(config.outputDirectories.outputDataDirectory) {
-              (data, delete) =>
+              (data, corrupt) =>
                 val expectedDataDF = TestData(testDataForTopic1.topic) +
                   TableTwo("a1", "b1", 1.0, "c", TimeStamps.ts_with_date_2016_12_02) +
-                  TableTwo("a3", "b3", 3.0, "c", TimeStamps.ts_with_date_2016_12_11) toOutputDF
-
-                data should beSameAs(expectedDataDF)
-
-                val expectedDeleteDF = TestData(testDataForTopic1.topic) +
+                  TableTwo("a3", "b3", 3.0, "c", TimeStamps.ts_with_date_2016_12_11) +
                   TableTwo("a2", "b2", 2.0, "d", TimeStamps.ts_with_date_2016_12_01) +
                   TableTwo("a4", "b4", 4.0, "d", TimeStamps.ts_with_date_2016_12_21) toOutputDF
 
-                delete should beSameAs(expectedDeleteDF)
+                data should beSameAs(expectedDataDF)
+                corrupt should beEmpty
             }
 
             TableThree.readFrom(config.outputDirectories.outputDataDirectory) {
-              (data, delete) =>
+              (data, corrupt) =>
                 data should beEmpty
-                delete should beEmpty
+                corrupt should beEmpty
             }
           }
         }

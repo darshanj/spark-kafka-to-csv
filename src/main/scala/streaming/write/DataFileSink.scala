@@ -57,7 +57,6 @@ class DataFileSink(config: Config) extends SinkLike {
         tableDataFrame
           .withSourceDateColumn
           .renameTableColumn
-          .withTypeColumn
           .dropExtraColumns
           .writeTo(config.outputDirectories.outputDataDirectory)
     }

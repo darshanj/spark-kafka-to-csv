@@ -9,9 +9,7 @@ import streaming.write.{CsvWriter, OutputWriter}
 sealed trait ExplodedTableDataFrame extends DataFrameLike {
   def renameTableColumn: ExplodedTableDataFrame
 
-  def withTypeColumn: ExplodedTableDataFrame
-
-  def withSourceDateColumn(): ExplodedTableDataFrame
+  def withSourceDateColumn: ExplodedTableDataFrame
 
   def dropExtraColumns: ExplodedTableDataFrame
 
@@ -27,9 +25,8 @@ object ExplodedTableDataFrame {
   private case class TableDataFrame(protected val dataFrame: DataFrame) extends ExplodedTableDataFrame {
     private val datePartitionColumnName = "dt"
     private val tablePartitionColumnName = "tableName"
-    private val operationTypePartitionColumnName = "type"
 
-    override def withSourceDateColumn(): ExplodedTableDataFrame = {
+    override def withSourceDateColumn: ExplodedTableDataFrame = {
       requireAnyColumnWith("__source_ts_ms",LongType)
       TableDataFrame(dataFrame.withColumn(datePartitionColumnName,
         to_date((col("__source_ts_ms") / MILLIS_PER_SECOND).cast(TimestampType))))
@@ -43,14 +40,8 @@ object ExplodedTableDataFrame {
     def csv: OutputWriter = new CsvWriter(dataFrame)
 
     override def writeTo(outputDir: String): Unit = {
-      csv.partitionBy(operationTypePartitionColumnName, tablePartitionColumnName, datePartitionColumnName)
+      csv.partitionBy(tablePartitionColumnName, datePartitionColumnName)
         .writeTo(outputDir)
-    }
-
-    override def withTypeColumn: ExplodedTableDataFrame = {
-      requireAnyColumnWith("__op",StringType)
-      TableDataFrame(dataFrame.withColumn(operationTypePartitionColumnName, when(col("__op") isin ("d"), "delete")
-        .otherwise("data")))
     }
 
     override def renameTableColumn: ExplodedTableDataFrame = {
@@ -61,15 +52,13 @@ object ExplodedTableDataFrame {
   }
 
   private case class EmptyTableDataFrame() extends ExplodedTableDataFrame {
-    override def withSourceDateColumn(): ExplodedTableDataFrame = this
+    override def withSourceDateColumn: ExplodedTableDataFrame = this
 
     override def dropExtraColumns: ExplodedTableDataFrame = this
 
     override def writeTo(outputDir: String): Unit = {}
 
     override protected def dataFrame: DataFrame = SparkSession.getActiveSession.get.emptyDataFrame
-
-    override def withTypeColumn: ExplodedTableDataFrame = this
 
     override def renameTableColumn: ExplodedTableDataFrame = this
   }

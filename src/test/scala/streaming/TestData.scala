@@ -74,10 +74,12 @@ trait TestData {
     def readFrom[Unit](outputDirectory: String)(f: (DataFrame, DataFrame) => Unit): Unit
 
     protected def constructDataFrames[U](outputDirectory: String, schema: StructType, tableName: String)(f: (DataFrame, DataFrame) => U): U = {
-      val t1DataAll = spark.read.options(Map("header" -> "true")).schema(schema).csv(outputDirectory)
-      val t1Data = t1DataAll.where(col("tableName") === tableName && col("type") === "data").drop("type")
-      val t1Delete = t1DataAll.where(col("tableName") === tableName && col("type") === "delete").drop("type")
-      f(t1Data, t1Delete)
+      val allRecords = spark.read.options(Map("header" -> "true"))
+        .schema(schema.add("_corrupt_record",StringType,nullable = true))
+        .csv(outputDirectory)
+      val dataRecords = allRecords.where(col("tableName") === tableName && col("_corrupt_record").isNull).drop("_corrupt_record")
+      val corruptRecords = allRecords.where(col("tableName") === tableName && col("_corrupt_record").isNotNull)
+      f(dataRecords, corruptRecords)
     }
   }
 
@@ -107,7 +109,7 @@ trait TestData {
   }
 
   object TableOne extends ValueReaderLike {
-    protected def name: String = "t1"
+    def name: String = "t1"
 
     protected def schema: StructType = StructType(Seq(
       StructField("__op", StringType, nullable = true),
